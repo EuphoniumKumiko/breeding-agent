@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Runtime outputs
+outputs/
+*.log
+
+# Codex local cache
+.codex/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Private biological datasets
+data/private/
+*.bam
+*.bai
+*.fa
+*.fa.gz
+*.fai
+*.gzi
+*.zst
+*.fastq
+*.fq
+*.vcf
+*.bcf
+*.sam
+*.cram
