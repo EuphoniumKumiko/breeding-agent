@@ -31,3 +31,6 @@ data/private/
 *.bcf
 *.sam
 *.cram
+
+# Runtime outputs
+outputs/
