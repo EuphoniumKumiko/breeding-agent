@@ -20,6 +20,30 @@ class FlavonoidMarkerRecommendationAgent:
         }
 
     def _recommend_for_gene(self, row: dict[str, str]) -> str:
+        variant_evidence_status = row.get("variant_evidence_status", "")
+        if variant_evidence_status == "preliminary_pass_variants_detected":
+            return (
+                "该基因候选区域已有真实 VCF PASS variant；可优先复核 PASS SNP "
+                "的 KASP 转化潜力。KASP/CAPS 结果只是 preliminary screening，"
+                "不是最终标记或酶切方案，仍需 flanking sequence、覆盖度和群体"
+                "验证。"
+            )
+        if variant_evidence_status == "only_low_quality_variants_detected":
+            return (
+                "该基因候选区域仅检出 LowQual variant，不应优先用于 KASP/CAPS，"
+                "需要先人工复核 coverage、quality 和 flanking sequence。"
+            )
+        if variant_evidence_status == "no_called_variant_in_current_mini_calling":
+            return (
+                "当前 mini calling 未检出 called variant，不能写成已有候选位点；"
+                "建议扩大候选区域、增加样本或使用 WGS/GBS 数据继续检测。"
+            )
+        if variant_evidence_status == "variant_calling_output_missing":
+            return (
+                "未读取到 variant calling 输出，沿用 variant_status 结论；不能"
+                "补写 SNP/InDel 坐标，需先运行候选区域 variant calling。"
+            )
+
         variant_status = row.get("variant_status", "not_called")
         if variant_status == "not_called":
             return (
@@ -54,7 +78,7 @@ class FlavonoidMarkerRecommendationAgent:
         for row in candidate_rows:
             gene_id = row.get("gene_id", "unknown")
             lines.append(
-                "| {gene_id} | {variant_status} | {recommendation} |".format(
+            "| {gene_id} | {variant_status} | {recommendation} |".format(
                     gene_id=gene_id,
                     variant_status=row.get("variant_status", "not_called"),
                     recommendation=recommendations_by_gene.get(gene_id, ""),

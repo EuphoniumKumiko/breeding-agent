@@ -23,6 +23,7 @@ class FlavonoidMarkerAggregationConfig:
     evidence_dir: Path
     outdir: Path = Path(DEFAULT_OUTDIR)
     target_genes: list[str] | None = None
+    variant_calling_dir: Path | None = None
 
 
 def run_flavonoid_marker_aggregation(
@@ -43,6 +44,9 @@ def run_flavonoid_marker_aggregation(
         "end_time": None,
         "evidence_dir": str(evidence_dir),
         "outdir": str(outdir),
+        "variant_calling_dir": (
+            str(config.variant_calling_dir) if config.variant_calling_dir else None
+        ),
         "outputs": {},
         "warnings": [],
         "error_message": None,
@@ -60,6 +64,7 @@ def run_flavonoid_marker_aggregation(
             evidence_dir=evidence_dir,
             outdir=outdir,
             target_genes=config.target_genes,
+            variant_calling_dir=config.variant_calling_dir,
         ).run()
         warnings = [str(warning) for warning in agent_result["warnings"]]
         for warning in warnings:
@@ -81,6 +86,7 @@ def run_flavonoid_marker_aggregation(
             "manifest": str(manifest_file),
         }
         manifest["agent_layer"] = agent_result["agent_layer"]
+        manifest["variant_calling_dir"] = agent_result.get("variant_calling_dir")
         print(
             f"[flavonoid-markers] candidates: {agent_result['candidate_file']}",
             flush=True,

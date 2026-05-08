@@ -154,6 +154,50 @@ outputs/genomics_variant_calling/
 
 KASP/CAPS 表都是 preliminary screening 输出，不是最终标记设计结果，不等同于 primer design、flanking-sequence checking、restriction enzyme screening 或群体验证。
 
+## 接入黄酮候选标记推荐
+
+Genomics Candidate Variant Calling MVP 的输出可以作为可选 evidence 接入 Flavonoid Marker Recommendation workflow。旧命令仍可用，不传 variant calling 目录时保持原行为：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_from_package
+```
+
+如果已经运行过本模块并生成 `outputs/genomics_variant_calling/tables/`，可以传入：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_from_package \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+接入后，黄酮推荐 workflow 会读取：
+
+```text
+outputs/genomics_variant_calling/tables/candidate_variants.tsv
+outputs/genomics_variant_calling/tables/kasp_candidate_sites.tsv
+outputs/genomics_variant_calling/tables/caps_candidate_sites.tsv
+```
+
+并在报告中增加“候选区域变异 calling 证据”小节，按 `Si9g04210.1`、`Si5g31340.1`、`Si9g34380.1` 汇总：
+
+- `variant_evidence_status`
+- PASS / LowQual 数量
+- SNP / InDel 数量
+- KASP `preliminary_pass` / `low_quality_review_required` 数量
+- CAPS `pass_variant_requires_enzyme_screening` / `low_quality_variant_requires_review` 数量
+
+`variant_evidence_status` 解释：
+
+- `preliminary_pass_variants_detected`：该基因候选区域已有真实 VCF PASS variant，可优先复核 PASS SNP 的 KASP 转化潜力。
+- `only_low_quality_variants_detected`：仅有 LowQual variant，不能等同于优先推荐位点。
+- `no_called_variant_in_current_mini_calling`：当前 mini calling 未检出 called variant，不能写成已有候选位点。
+- `variant_calling_output_missing`：指定目录或 TSV 缺失，只记录 warning，不让 flavonoid marker workflow 崩溃。
+
+该接入仍然不伪造 SNP/InDel 位点。即使有 PASS variant，KASP/CAPS 表也只是 preliminary screening，不是最终 marker 或酶切方案；后续仍需 primer/flanking sequence 检查、restriction enzyme screening，以及更大群体基因型和黄酮含量关联验证。
+
 ## 报告内容
 
 `genomics_variant_calling_report.md` 会说明：

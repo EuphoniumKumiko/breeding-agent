@@ -62,6 +62,41 @@ Si9g34380.1
             result["missing_items"],
         )
 
+    def test_variant_calling_optional_limitations_are_checked(self):
+        report = (
+            COMPLETE_REPORT
+            + "\n## 候选区域变异 calling 证据\n"
+            + "LowQual 位点仅作为可追溯候选记录保留，不应直接优先用于 KASP/CAPS 开发。\n"
+            + "KASP/CAPS 表只是 preliminary screening，不是最终引物或酶切方案。\n"
+            + "该结果不能替代 WGS/GBS 群体变异检测。\n"
+        )
+        result = check_flavonoid_marker_report(report)
+
+        self.assertIs(result["passed"], True)
+        self.assertEqual(result["optional_variant_checks"], [])
+
+    def test_variant_calling_missing_limitations_fails_optional_qa(self):
+        report = (
+            COMPLETE_REPORT
+            + "\n## 候选区域变异 calling 证据\n"
+            + "LowQual variant and preliminary KASP screening are shown.\n"
+        )
+        result = check_flavonoid_marker_report(report)
+
+        self.assertIs(result["passed"], False)
+        self.assertIn(
+            "missing LowQual non-prioritization statement",
+            result["missing_items"],
+        )
+        self.assertIn(
+            "missing preliminary KASP/CAPS limitation statement",
+            result["missing_items"],
+        )
+        self.assertIn(
+            "missing WGS/GBS limitation statement",
+            result["missing_items"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

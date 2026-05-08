@@ -11,6 +11,8 @@ Flavonoid Marker Recommendation 模块用于谷子黄酮候选标记推荐。它
 
 当前模块是规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。它不调用 LLM，不调用外部 API，不引入 Deep Agents 或 LangGraph。
 
+当前还支持可选接入 Genomics Candidate Variant Calling MVP 的真实 TSV 输出。传入 `--variant-calling-dir` 后，报告会展示每个目标基因的候选区域变异 calling 证据、PASS/LowQual 质量分层和 KASP/CAPS preliminary screening 状态。不传该参数时保持旧行为。
+
 ## 2. 学长硬性要求
 
 核心输入必须记录：
@@ -39,6 +41,10 @@ Si9g34380.1
 - 不伪造 DOI。
 - 不伪造 SNP/InDel 位点。
 - 如果没有正式 variant calling 结果，写 `variant_status=not_called`。
+- 如果接入 candidate-region variant calling 输出，只能读取真实 TSV 记录，不能补造 SNP/InDel。
+- LowQual 位点不能写成优先开发位点。
+- KASP/CAPS preliminary screening 不能写成最终标记设计结果。
+- 当前 mini BAM calling 不能写成 WGS/GBS 群体变异检测。
 - 中文推荐文本必须出现 `群体`。
 - 每个重点基因在面向人的报告中必须展示统计值。
 
@@ -51,6 +57,7 @@ Si9g34380.1
 | `src/breeding_agent/cli/flavonoid_markers.py` | aggregation CLI |
 | `src/breeding_agent/workflows/flavonoid_marker_aggregation.py` | aggregation workflow |
 | `src/breeding_agent/integration/flavonoid_marker_aggregator.py` | 聚合 candidate table |
+| `src/breeding_agent/integration/flavonoid_variant_evidence.py` | 可选读取 variant calling TSV 并按目标基因聚合 |
 | `src/breeding_agent/agents/flavonoid_central_host.py` | agent 编排 |
 | `src/breeding_agent/agents/flavonoid_literature_agent.py` | 文献 evidence 读取 |
 | `src/breeding_agent/agents/flavonoid_marker_recommendation_agent.py` | 标记类型推荐 |
@@ -61,6 +68,7 @@ Si9g34380.1
 | `src/breeding_agent/integration/flavonoid_marker_qa.py` | QA 规则 |
 | `tests/test_flavonoid_agent_layer.py` | agent layer 测试 |
 | `tests/test_flavonoid_marker_qa.py` | QA 测试 |
+| `tests/test_flavonoid_variant_evidence.py` | 可选 variant evidence 聚合测试 |
 
 ## 4. 入口函数
 
@@ -81,6 +89,15 @@ workflow 入口：
 
 ```text
 src/breeding_agent/workflows/flavonoid_marker_aggregation.py:run_flavonoid_marker_aggregation_task(config)
+```
+
+带可选 variant calling evidence 的 CLI：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_from_package \
+  --variant-calling-dir outputs/genomics_variant_calling
 ```
 
 agent 入口：
@@ -116,6 +133,18 @@ src/breeding_agent/integration/flavonoid_marker_package_importer.py:create_evide
 variant_status=not_called
 ```
 
+可选 variant calling evidence 目录：
+
+```text
+outputs/genomics_variant_calling/
+└── tables/
+    ├── candidate_variants.tsv
+    ├── kasp_candidate_sites.tsv
+    └── caps_candidate_sites.tsv
+```
+
+该目录不存在或文件缺失时 workflow 只记录 warning，不失败。不传 `--variant-calling-dir` 时保持原行为。
+
 ## 6. aggregation 输出
 
 默认输出：
@@ -137,6 +166,7 @@ outputs/flavonoid_marker_from_package/
 - 代谢物相关证据：top correlated metabolite、Pearson r、sPLS metabolite。
 - 功能注释：Description、KEGG、PFAM。
 - `variant_status`。
+- 可选 variant calling 统计：`variant_evidence_status`、`pass_variants`、`lowqual_variants`、`pass_snp_count`、`kasp_preliminary_pass_count`、`caps_pass_variant_requires_enzyme_screening_count` 等。
 - `marker_recommendation`。
 
 ## 7. DeepRare-like lightweight agent layer 结构
@@ -168,12 +198,18 @@ FlavonoidCentralHost.run()
   - 原样展示 DOI。
   - 不补写、猜测或生成 DOI。
 - `FlavonoidMarkerRecommendationAgent`
-  - 根据 `variant_status` 生成 SNP/InDel/KASP/CAPS 推荐。
+  - 根据 `variant_status` 和可选 `variant_evidence_status` 生成 SNP/InDel/KASP/CAPS 推荐。
   - `not_called` 时明确不能写具体位置。
+  - 有 `preliminary_pass_variants_detected` 时，可建议优先复核 PASS SNP 的 KASP 转化潜力。
+  - 只有 LowQual 时，必须说明不应优先用于 KASP/CAPS，需要人工复核。
+  - 当前 mini calling 无 called variant 时，必须说明不能写成已有候选位点。
 - `FlavonoidValidationAgent`
   - 输出后续验证方案，包括 Sanger、SNP/InDel calling、KASP、CAPS/dCAPS、群体关联、qRT-PCR、LC-MS/MS。
 - `FlavonoidReviewerAgent`
   - 检查缺失统计值、缺失 DOI、缺失验证方案、疑似伪造 variant 坐标、过度推断。
+  - 检查 LowQual 是否被错误写成优先推荐。
+  - 检查 preliminary KASP/CAPS 是否被错误写成最终标记。
+  - 检查 RNA-seq BAM candidate calling 是否被错误写成 WGS/GBS 群体变异检测。
 - `FlavonoidFinalQAAgent`
   - 调用 `check_flavonoid_marker_report()`，避免重复实现 QA。
 
@@ -194,6 +230,7 @@ generate_flavonoid_marker_report_from_agent_result(...)
 - 转录组证据表。
 - 代谢组证据表。
 - 基因组/变异证据。
+- 候选区域变异 calling 证据。如果传入 `--variant-calling-dir`，该节会展示每个目标基因的 PASS/LowQual、SNP/InDel、KASP/CAPS 初筛统计。
 - 功能注释证据。
 - 文献查阅过程和 DOI。
 - SNP/InDel/KASP/CAPS 标记类型推荐。
@@ -216,6 +253,9 @@ src/breeding_agent/integration/flavonoid_marker_qa.py
 - 每个重点基因是否有统计值。
 - 是否有 DOI。
 - 是否有标记类型建议。
+- 如果报告包含 LowQual，则必须说明 LowQual 不应直接优先用于 KASP/CAPS。
+- 如果报告包含 KASP/CAPS preliminary screening，则必须说明它不是最终标记设计结果。
+- 如果报告包含 variant calling，则必须说明不能替代 WGS/GBS 群体变异检测。
 
 输出：
 
@@ -253,6 +293,11 @@ passed=true
 - 如果未来有正式 called variants：
   - 才能基于真实坐标筛选 SNP/InDel。
   - 才能进一步设计 KASP/CAPS marker。
+- 如果传入 `--variant-calling-dir`：
+  - `preliminary_pass_variants_detected` 表示候选区域已有真实 VCF PASS variant，可优先复核 PASS SNP 的 KASP 转化潜力。
+  - `only_low_quality_variants_detected` 表示只有 LowQual variant，不应直接优先开发。
+  - `no_called_variant_in_current_mini_calling` 表示当前 mini calling 未检出 called variant，不能写成已有候选位点。
+  - `variant_calling_output_missing` 表示指定输出目录或 TSV 缺失，只保留 warning。
 
 ## 12. 常见问题
 

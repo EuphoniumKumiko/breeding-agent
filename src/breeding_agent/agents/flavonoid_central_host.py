@@ -33,15 +33,18 @@ class FlavonoidCentralHost:
         evidence_dir: Path,
         outdir: Path,
         target_genes: list[str] | None = None,
+        variant_calling_dir: Path | None = None,
     ) -> None:
         self.evidence_dir = evidence_dir
         self.outdir = outdir
         self.target_genes = target_genes or list(REQUIRED_GENE_IDS)
+        self.variant_calling_dir = variant_calling_dir
 
     def run(self) -> dict[str, object]:
         aggregation_result = aggregate_flavonoid_marker_candidates(
             evidence_dir=self.evidence_dir,
             outdir=self.outdir,
+            variant_calling_dir=self.variant_calling_dir,
         )
         candidate_rows = aggregation_result.candidate_rows
         warnings = list(aggregation_result.warnings)
@@ -67,6 +70,7 @@ class FlavonoidCentralHost:
                 marker_result["marker_recommendation_text"]
             ),
             validation_plan_text=str(validation_result["validation_plan_text"]),
+            variant_calling_dir=aggregation_result.variant_calling_dir,
         )
         reviewer_result = FlavonoidReviewerAgent().run(
             candidate_rows=candidate_rows,
@@ -88,6 +92,7 @@ class FlavonoidCentralHost:
             ),
             validation_plan_text=str(validation_result["validation_plan_text"]),
             reviewer_notes=str(reviewer_result["reviewer_notes"]),
+            variant_calling_dir=aggregation_result.variant_calling_dir,
         )
         qa_result = FlavonoidFinalQAAgent().run(report_text_without_qa)
         final_report_text = render_flavonoid_marker_report(
@@ -102,6 +107,7 @@ class FlavonoidCentralHost:
             validation_plan_text=str(validation_result["validation_plan_text"]),
             reviewer_notes=str(reviewer_result["reviewer_notes"]),
             qa_result=qa_result,
+            variant_calling_dir=aggregation_result.variant_calling_dir,
         )
         qa_result = FlavonoidFinalQAAgent().run(final_report_text)
 
@@ -120,6 +126,11 @@ class FlavonoidCentralHost:
             "qa_result": qa_result,
             "report_text": final_report_text,
             "warnings": warnings,
+            "variant_calling_dir": (
+                str(aggregation_result.variant_calling_dir)
+                if aggregation_result.variant_calling_dir
+                else None
+            ),
             "agent_layer": {
                 "mode": "rule_based_deeprare_like_lightweight",
                 "uses_llm": False,

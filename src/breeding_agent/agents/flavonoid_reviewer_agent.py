@@ -41,6 +41,7 @@ class FlavonoidReviewerAgent:
             issues.append("疑似伪造变异位点：variant_status=not_called 时出现具体坐标。")
         if "最终育种验证" in report_text and "不等同于最终育种验证" not in report_text:
             issues.append("过度推断风险：报告可能把 mini evidence 写成最终育种验证。")
+        issues.extend(self._variant_evidence_overclaim_issues(candidate_rows, report_text))
 
         reviewer_notes = (
             "ReviewerAgent 规则审阅通过：未发现缺失统计值、缺失 DOI、缺失验证方案、"
@@ -80,3 +81,40 @@ class FlavonoidReviewerAgent:
             for row in candidate_rows
         )
         return has_not_called and POSITION_RE.search(report_text) is not None
+
+    def _variant_evidence_overclaim_issues(
+        self,
+        candidate_rows: list[dict[str, str]],
+        report_text: str,
+    ) -> list[str]:
+        issues = []
+        if "LowQual" in report_text and not (
+            "不应直接优先" in report_text or "不应优先" in report_text
+        ):
+            issues.append("LowQual 解释不足：未明确说明 LowQual 不应优先推荐。")
+        if "preliminary" in report_text and not (
+            "不是最终标记" in report_text or "不是最终引物" in report_text
+        ):
+            issues.append("preliminary KASP/CAPS 解释不足：未明确说明不是最终标记。")
+        if "RNA-seq BAM" in report_text and (
+            "WGS/GBS 群体变异检测" in report_text
+            or "WGS 群体变异检测" in report_text
+        ) and not ("不能替代 WGS/GBS" in report_text or "不能替代 WGS" in report_text):
+            issues.append("variant calling 限制不足：可能把 RNA-seq BAM calling 写成 WGS/GBS。")
+
+        no_variant_genes = {
+            row.get("gene_id", "")
+            for row in candidate_rows
+            if row.get("variant_evidence_status", "")
+            in {
+                "no_called_variant_in_current_mini_calling",
+                "variant_calling_output_missing",
+            }
+        }
+        for line in report_text.splitlines():
+            for gene_id in no_variant_genes:
+                if gene_id and gene_id in line and "preliminary_pass_variants_detected" in line:
+                    issues.append(
+                        f"{gene_id} 描述错误：当前无 called variant 却写成已有 PASS variant。"
+                    )
+        return issues

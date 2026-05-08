@@ -412,7 +412,19 @@ outputs/flavonoid_marker_from_package/
 - 文献 DOI 只来自 `literature_evidence.tsv` 或经过人工核验的输入，不伪造 DOI。
 - 当前 mini 数据包没有最终 SNP/InDel calling 结果时，报告必须保留 `variant_status=not_called`。
 - 不伪造 SNP/InDel 具体位点；后续应基于 BAM、`genome.fa/genome.gff` 或 `genome.bam_compatible.fa.gz` 与 `genome.original_coords.gff` 做候选区域 SNP/InDel calling，再筛选 KASP/CAPS 可转化位点。
+- 如果已经运行 Genomics Candidate Variant Calling MVP，可通过 `--variant-calling-dir outputs/genomics_variant_calling` 把真实 `candidate_variants.tsv`、`kasp_candidate_sites.tsv`、`caps_candidate_sites.tsv` 可选接入黄酮推荐报告。
+- 可选 variant evidence 接入后会展示 PASS/LowQual、SNP/InDel、KASP/CAPS preliminary screening 统计；LowQual 不应直接优先用于 KASP/CAPS，preliminary screening 不等同于最终标记设计。
+- 当前候选区域 calling 如果基于 RNA-seq BAM，不能替代 WGS/GBS 群体变异检测。
 - 后续如果需要接入 LLM，应通过明确 adapter 接入 LiteratureAgent、MarkerRecommendationAgent 或 ReviewerAgent，并保留当前规则 fallback。
+
+带可选 variant calling evidence 的 flavonoid marker CLI：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_from_package \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
 
 ## 11. 人工校验清单
 
