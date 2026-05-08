@@ -1,3 +1,4 @@
+import csv
 import gzip
 import tempfile
 import unittest
@@ -91,7 +92,7 @@ class GenomicsVariantCallingParsingTest(unittest.TestCase):
             lines = candidate_file.read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(lines), 1)
 
-    def test_kasp_and_caps_tables_are_generated_from_real_vcf_records(self):
+    def test_kasp_and_caps_tables_are_quality_stratified_from_real_vcf_records(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
             vcf_path = tmpdir_path / "test.vcf.gz"
@@ -103,7 +104,9 @@ class GenomicsVariantCallingParsingTest(unittest.TestCase):
                         "##fileformat=VCFv4.2",
                         "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO",
                         "chr1\t10\t.\tA\tG\t60\tPASS\tDP=12",
+                        "chr1\t11\t.\tC\tT\t10\tLowQual\tDP=6",
                         "chr1\t20\t.\tAT\tA\t35\tPASS\tDP=8",
+                        "chr1\t21\t.\tG\tGA\t5\tLowQual\tDP=4",
                         "",
                     ]
                 ),
@@ -116,16 +119,44 @@ class GenomicsVariantCallingParsingTest(unittest.TestCase):
                 regions_bed=None,
             )
 
-            self.assertEqual(result["counts"]["candidate_variants"], 2)
-            self.assertEqual(result["counts"]["snps"], 1)
-            self.assertEqual(result["counts"]["indels"], 1)
-            self.assertIn(
-                "preliminary",
-                (tables_dir / "kasp_candidate_sites.tsv").read_text(encoding="utf-8"),
+            self.assertEqual(result["counts"]["candidate_variants"], 4)
+            self.assertEqual(result["counts"]["snps"], 2)
+            self.assertEqual(result["counts"]["indels"], 2)
+            self.assertEqual(result["counts"]["pass_variants"], 2)
+            self.assertEqual(result["counts"]["lowqual_variants"], 2)
+            self.assertEqual(result["counts"]["pass_snps"], 1)
+            self.assertEqual(result["counts"]["lowqual_snps"], 1)
+            self.assertEqual(result["counts"]["pass_indels"], 1)
+            self.assertEqual(result["counts"]["lowqual_indels"], 1)
+
+            kasp_rows = _read_tsv(tables_dir / "kasp_candidate_sites.tsv")
+            kasp_by_pos = {row["pos"]: row for row in kasp_rows}
+            self.assertEqual(
+                kasp_by_pos["10"]["kasp_readiness"],
+                "preliminary_pass",
             )
-            self.assertIn(
-                "requires_restriction_enzyme_screening",
-                (tables_dir / "caps_candidate_sites.tsv").read_text(encoding="utf-8"),
+            self.assertEqual(
+                kasp_by_pos["11"]["kasp_readiness"],
+                "low_quality_review_required",
+            )
+
+            caps_rows = _read_tsv(tables_dir / "caps_candidate_sites.tsv")
+            caps_by_pos = {row["pos"]: row for row in caps_rows}
+            self.assertEqual(
+                caps_by_pos["10"]["caps_status"],
+                "pass_variant_requires_enzyme_screening",
+            )
+            self.assertEqual(
+                caps_by_pos["11"]["caps_status"],
+                "low_quality_variant_requires_review",
+            )
+            self.assertEqual(
+                caps_by_pos["20"]["caps_status"],
+                "pass_variant_requires_enzyme_screening",
+            )
+            self.assertEqual(
+                caps_by_pos["21"]["caps_status"],
+                "low_quality_variant_requires_review",
             )
 
 
@@ -160,12 +191,28 @@ class GenomicsVariantCallingValidationTest(unittest.TestCase):
                     "indels": 0,
                     "kasp_candidate_sites": 0,
                     "caps_candidate_sites": 0,
+                    "pass_variants": 0,
+                    "lowqual_variants": 0,
+                    "pass_snps": 0,
+                    "lowqual_snps": 0,
+                    "pass_indels": 0,
+                    "lowqual_indels": 0,
+                    "kasp_preliminary_pass": 0,
+                    "kasp_low_quality_review_required": 0,
+                    "caps_pass_variant_requires_enzyme_screening": 0,
+                    "caps_low_quality_variant_requires_review": 0,
                 },
                 "covered_target_genes": [],
                 "warnings": [],
             }
         )
 
+        self.assertIn("Variant Quality Summary", report)
+        self.assertIn("PASS variants are prioritized", report)
+        self.assertIn("LowQual variants are retained for traceability", report)
+        self.assertIn("KASP/CAPS tables are preliminary screening outputs", report)
+        self.assertIn("PASS 位点可优先进入后续标记开发复核", report)
+        self.assertIn("LowQual 位点仅作为可追溯候选记录保留", report)
         self.assertIn("候选区域 calling", report)
         self.assertIn("不等同于 WGS 全基因组变异检测", report)
         self.assertIn("RNA-seq BAM", report)
@@ -201,6 +248,11 @@ class GenomicsVariantCallingRealRunTest(unittest.TestCase):
 def _write_gzip_text(path: Path, text: str) -> None:
     with gzip.open(path, "wt", encoding="utf-8") as handle:
         handle.write(text)
+
+
+def _read_tsv(path: Path) -> list[dict[str, str]]:
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle, delimiter="\t"))
 
 
 if __name__ == "__main__":

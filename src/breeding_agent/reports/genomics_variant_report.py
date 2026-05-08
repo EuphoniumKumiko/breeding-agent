@@ -50,6 +50,43 @@ def render_genomics_variant_report(result: dict[str, object]) -> str:
         f"- KASP candidate rows: {_value(counts, 'kasp_candidate_sites')}",
         f"- CAPS screening rows: {_value(counts, 'caps_candidate_sites')}",
         "",
+        "## Variant Quality Summary",
+        f"- total candidate variants: {_value(counts, 'candidate_variants')}",
+        f"- PASS variants: {_value(counts, 'pass_variants')}",
+        f"- LowQual variants: {_value(counts, 'lowqual_variants')}",
+        f"- PASS SNPs: {_value(counts, 'pass_snps')}",
+        f"- LowQual SNPs: {_value(counts, 'lowqual_snps')}",
+        f"- PASS InDels: {_value(counts, 'pass_indels')}",
+        f"- LowQual InDels: {_value(counts, 'lowqual_indels')}",
+        f"- KASP preliminary_pass rows: {_value(counts, 'kasp_preliminary_pass')}",
+        (
+            "- KASP low_quality_review_required rows: "
+            f"{_value(counts, 'kasp_low_quality_review_required')}"
+        ),
+        (
+            "- CAPS pass_variant_requires_enzyme_screening rows: "
+            f"{_value(counts, 'caps_pass_variant_requires_enzyme_screening')}"
+        ),
+        (
+            "- CAPS low_quality_variant_requires_review rows: "
+            f"{_value(counts, 'caps_low_quality_variant_requires_review')}"
+        ),
+        "",
+        "PASS variants are prioritized for downstream marker review.",
+        (
+            "LowQual variants are retained for traceability but should not be "
+            "prioritized without manual review."
+        ),
+        (
+            "KASP/CAPS tables are preliminary screening outputs and do not replace "
+            "primer design, flanking-sequence checking, enzyme screening, or "
+            "population validation."
+        ),
+        "",
+        "PASS 位点可优先进入后续标记开发复核。",
+        "LowQual 位点仅作为可追溯候选记录保留，不应直接优先用于 KASP/CAPS 开发。",
+        "KASP/CAPS 表只是初筛结果，不等同于最终引物或酶切方案。",
+        "",
         "## 5. 三个重点基因候选区域覆盖情况",
     ]
     for gene_id in TARGET_GENES:

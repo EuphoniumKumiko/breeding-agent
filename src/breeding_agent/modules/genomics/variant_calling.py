@@ -280,6 +280,12 @@ def build_variant_tables_from_vcf(
             if row["nearest_or_target_gene"] in TARGET_GENES
         }
     )
+    pass_variants = [row for row in candidate_rows if is_pass_variant(row)]
+    lowqual_variants = [row for row in candidate_rows if not is_pass_variant(row)]
+    pass_snps = [row for row in snp_rows if is_pass_variant(row)]
+    lowqual_snps = [row for row in snp_rows if not is_pass_variant(row)]
+    pass_indels = [row for row in indel_rows if is_pass_variant(row)]
+    lowqual_indels = [row for row in indel_rows if not is_pass_variant(row)]
     return {
         "candidate_rows": candidate_rows,
         "snp_rows": snp_rows,
@@ -300,6 +306,24 @@ def build_variant_tables_from_vcf(
             "indels": len(indel_rows),
             "kasp_candidate_sites": len(kasp_rows),
             "caps_candidate_sites": len(caps_rows),
+            "pass_variants": len(pass_variants),
+            "lowqual_variants": len(lowqual_variants),
+            "pass_snps": len(pass_snps),
+            "lowqual_snps": len(lowqual_snps),
+            "pass_indels": len(pass_indels),
+            "lowqual_indels": len(lowqual_indels),
+            "kasp_preliminary_pass": count_rows_by_value(
+                kasp_rows, "kasp_readiness", "preliminary_pass"
+            ),
+            "kasp_low_quality_review_required": count_rows_by_value(
+                kasp_rows, "kasp_readiness", "low_quality_review_required"
+            ),
+            "caps_pass_variant_requires_enzyme_screening": count_rows_by_value(
+                caps_rows, "caps_status", "pass_variant_requires_enzyme_screening"
+            ),
+            "caps_low_quality_variant_requires_review": count_rows_by_value(
+                caps_rows, "caps_status", "low_quality_variant_requires_review"
+            ),
         },
     }
 
@@ -393,11 +417,18 @@ def build_kasp_candidate_rows(
         if "," in alt:
             readiness = "not_recommended"
             reason = "Multi-allelic SNP; first MVP does not recommend direct KASP design."
-        else:
-            readiness = "preliminary"
+        elif is_pass_variant(row):
+            readiness = "preliminary_pass"
             reason = (
-                "Biallelic SNP from VCF; requires manual flanking sequence review "
-                "before KASP assay design."
+                "Biallelic PASS SNP from VCF; suitable for preliminary KASP review "
+                "after flanking-sequence and population validation."
+            )
+        else:
+            readiness = "low_quality_review_required"
+            reason = (
+                "SNP is present in VCF but did not pass filtering; do not prioritize "
+                "for KASP until coverage, quality, and flanking sequence are manually "
+                "reviewed."
             )
         rows.append(
             {
@@ -418,21 +449,46 @@ def build_caps_candidate_rows(
 ) -> list[dict[str, str]]:
     """Build CAPS screening rows without inventing restriction enzyme sites."""
 
-    return [
-        {
-            "chrom": row["chrom"],
-            "pos": row["pos"],
-            "ref": row["ref"],
-            "alt": row["alt"],
-            "gene_id": row["nearest_or_target_gene"],
-            "caps_status": "requires_restriction_enzyme_screening",
-            "reason": (
+    rows = []
+    for row in candidate_rows:
+        if is_pass_variant(row):
+            status = "pass_variant_requires_enzyme_screening"
+            reason = (
                 "Do not assume an enzyme site. Screen whether this variant changes "
                 "a restriction enzyme recognition sequence before CAPS/dCAPS design."
-            ),
-        }
-        for row in candidate_rows
-    ]
+            )
+        else:
+            status = "low_quality_variant_requires_review"
+            reason = (
+                "Do not assume an enzyme site. Screen whether this variant changes "
+                "a restriction enzyme recognition sequence before CAPS/dCAPS design. "
+                "LowQual variants require manual quality review before marker "
+                "prioritization."
+            )
+        rows.append(
+            {
+                "chrom": row["chrom"],
+                "pos": row["pos"],
+                "ref": row["ref"],
+                "alt": row["alt"],
+                "gene_id": row["nearest_or_target_gene"],
+                "caps_status": status,
+                "reason": reason,
+            }
+        )
+    return rows
+
+
+def is_pass_variant(row: dict[str, str]) -> bool:
+    """Return True when the VCF FILTER value is PASS."""
+
+    return row.get("filter", "") == "PASS"
+
+
+def count_rows_by_value(rows: list[dict[str, str]], key: str, value: str) -> int:
+    """Count rows with an exact value in a table-like list of dictionaries."""
+
+    return sum(1 for row in rows if row.get(key) == value)
 
 
 def extract_depth(info: str, remaining_fields: list[str]) -> str:

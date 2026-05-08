@@ -13,6 +13,8 @@
 - 只有 `bcftools` 实际生成的 VCF 位点才会进入 `candidate_variants.tsv`。
 - workflow 不伪造 SNP/InDel 位点。
 - CAPS 表不会伪造酶切位点，只标记为需要后续 restriction enzyme screening。
+- `PASS` 和 `LowQual` 位点会在 KASP/CAPS 初筛表和报告中分层展示。
+- `LowQual` 位点只作为可追溯候选记录保留，不能等同于优先推荐位点。
 - 后续仍需更大群体基因型和黄酮含量关联验证。
 
 ## 依赖工具
@@ -114,14 +116,30 @@ outputs/genomics_variant_calling/
 
 如果 VCF 中没有位点，该文件只包含表头，不会补造候选变异。
 
+## PASS / LowQual 质量分层
+
+`candidate_variants.tsv` 会保留 VCF 的 `filter` 字段，例如：
+
+- `PASS`
+- `LowQual`
+
+质量分层含义：
+
+- `PASS` 位点：通过当前 bcftools 基础过滤，可优先进入后续 marker review。
+- `LowQual` 位点：存在于真实 VCF 中，但未通过过滤；只为可追溯性保留，不应直接优先用于 KASP/CAPS 开发。
+
+当前分层只是 MVP 的基础质量标记，不能替代人工检查 coverage、mapping、flanking sequence 和群体验证。
+
 ## KASP candidate 规则
 
 第一版规则：
 
 - 只有 SNP 进入 `kasp_candidate_sites.tsv`。
-- 双等位 SNP 标记为 `preliminary`。
+- 双等位 `PASS` SNP 标记为 `preliminary_pass`。
+- 双等位非 `PASS` SNP 标记为 `low_quality_review_required`。
 - 多等位 SNP 标记为 `not_recommended`。
 - 所有 KASP candidate 都需要后续人工检查 flanking sequence。
+- `low_quality_review_required` 不应被理解为可直接优先开发 KASP，只表示该 SNP 来自真实 VCF，但需要先复核 coverage、quality 和 flanking sequence。
 
 ## CAPS candidate 规则
 
@@ -129,8 +147,12 @@ outputs/genomics_variant_calling/
 
 - 不推断具体限制性内切酶。
 - 不伪造酶切位点。
-- `caps_status` 写 `requires_restriction_enzyme_screening`。
+- `PASS` variant 写 `pass_variant_requires_enzyme_screening`。
+- 非 `PASS` variant 写 `low_quality_variant_requires_review`。
 - 后续需要检测该变异是否改变限制性内切酶识别位点。
+- `LowQual` 位点需要先人工复核质量，再考虑是否进入 CAPS/dCAPS 设计。
+
+KASP/CAPS 表都是 preliminary screening 输出，不是最终标记设计结果，不等同于 primer design、flanking-sequence checking、restriction enzyme screening 或群体验证。
 
 ## 报告内容
 
@@ -140,6 +162,8 @@ outputs/genomics_variant_calling/
 - 使用的 samtools/bcftools 命令。
 - 输出 VCF 和候选表。
 - SNP/InDel 数量。
+- `PASS` / `LowQual` 位点统计。
+- KASP/CAPS 初筛表中的质量分层统计。
 - 三个重点基因 `Si9g04210.1`、`Si5g31340.1`、`Si9g34380.1` 是否有 called variant 覆盖。
 - 当前结果来自候选区域 calling，不等同于 WGS 全基因组变异检测。
 - RNA-seq BAM 的覆盖限制。
