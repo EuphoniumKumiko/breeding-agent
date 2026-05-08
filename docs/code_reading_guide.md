@@ -101,7 +101,7 @@ QA 文件：
 
 - `src/breeding_agent/web/gradio_app.py`
 
-原因：Gradio 文件比较长，但它主要是展示层。先理解后端 workflow 后，再看页面按钮如何调用函数会更容易。
+原因：Gradio 文件比较长，但它主要是展示层。当前页面使用顶部 `gr.Tab` 结构，包括 `Transcriptomics DEG Module`、`Metabolomics Module`、`Genomics / GWAS Module`、`Integration & Recommendation` 和 `谷子黄酮候选标记推荐`。先理解后端 workflow 后，再看每个 Tab 的按钮如何调用函数会更容易。
 
 ## 关键文件作用速查
 

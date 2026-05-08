@@ -143,8 +143,8 @@ Gradio 只是展示层和按钮入口，不改变后端分析逻辑。
 ### Gradio
 
 - `src/breeding_agent/web/gradio_app.py`
-  - 左侧 sticky 导航 + 右侧单页模块展示。
-  - 包含 Transcriptomics、Metabolomics、Genomics、Integration、Flavonoid Marker Recommendation 五个模块。
+  - 当前使用顶部 `gr.Tab` 页面结构。
+  - 包含 `Transcriptomics DEG Module`、`Metabolomics Module`、`Genomics / GWAS Module`、`Integration & Recommendation`、`谷子黄酮候选标记推荐` 五个 Tab。
   - 只接收本地路径，不上传 BAM/FASTA/代谢组大文件。
 
 ## 每个模块的输入和输出

@@ -434,7 +434,9 @@ outputs/flavonoid_marker_from_package/
 
 ## 12. Gradio 页面查看谷子黄酮标记推荐结果
 
-Gradio 前端已支持在 `Metabolomics Module`、`Genomics / GWAS Module` 和 `谷子黄酮候选标记推荐` Tab 中查看多组学 evidence / region analysis 和 flavonoid marker aggregation 结果。启动方式：
+当前 `src/breeding_agent/web/gradio_app.py` 使用顶部 `gr.Tab` 布局，页面标题为 `Agri Multi-omics Breeding Agent Demo`。当前真实存在的 Tab 包括 `Transcriptomics DEG Module`、`Metabolomics Module`、`Genomics / GWAS Module`、`Integration & Recommendation` 和 `谷子黄酮候选标记推荐`。文档应以这个 Tab 结构为准，不再描述为左侧 sticky 导航、单页 dashboard 或 Radio 模块切换。
+
+普通启动方式：
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.web.gradio_app
@@ -452,11 +454,27 @@ GRADIO_SERVER_NAME=0.0.0.0 GRADIO_SERVER_PORT=7860 PYTHONPATH=src gradio src/bre
 http://127.0.0.1:7860
 ```
 
-该页面保留原 RNA-seq DEG demo，并新增本地路径输入。`Metabolomics Module` 默认读取 `data/private/flavonoid_marker_mini_5genes_50kb`，输出到 `outputs/gradio_metabolomics_run/metabolomics/`，展示 `candidate_metabolites.tsv`、`flavonoid_related_significant_metabolites.tsv`、`target_gene_metabolite_network_edges.tsv`、`target_gene_spls_coefficients.tsv`、`metabolomics_report.md` 和 `manifest.json`。
+如果虚拟机或 shell 代理导致 localhost 502、页面加载失败或 websocket 异常，可以临时执行：
+
+```bash
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
+export NO_PROXY=localhost,127.0.0.1,0.0.0.0
+export no_proxy=localhost,127.0.0.1,0.0.0.0
+```
+
+从宿主机访问虚拟机服务时，也可以把虚拟机 IP 加入 `NO_PROXY/no_proxy`。
+
+该页面保留原 RNA-seq DEG demo。`Transcriptomics DEG Module` 调用现有 RNA-seq DEG workflow，展示 significant genes、report、manifest 和 run log。
+
+`Metabolomics Module` 默认读取 `data/private/flavonoid_marker_mini_5genes_50kb`，输出到 `outputs/gradio_metabolomics_run/metabolomics/`，展示 `candidate_metabolites.tsv`、`flavonoid_related_significant_metabolites.tsv`、`target_gene_metabolite_network_edges.tsv`、`target_gene_spls_coefficients.tsv`、`metabolomics_report.md` 和 `manifest.json`。该模块当前是基于学长数据包已有结果表的 evidence analysis，不是从 mzML/raw 或原始峰表重新做完整代谢组统计流程。
 
 `Genomics / GWAS Module` 默认读取同一学长数据包，输出到 `outputs/gradio_genomics_run/genomics/`，展示 `target_gene_regions.tsv`、`annotation_summary.tsv`、`marker_readiness.tsv`、`genomics_report.md` 和 `manifest.json`。当前第一版只做基于已有结果表的 region / annotation analysis，不做正式 SNP/InDel calling，`marker_readiness.tsv` 中三个重点基因的 `variant_status` 固定为 `not_called`，不伪造 SNP/InDel 位点。
 
-`谷子黄酮候选标记推荐` Tab 支持生成 evidence、运行标记推荐、一键运行完整流程，并展示 `flavonoid_marker_candidates.tsv`、`flavonoid_marker_report.md`、`qa_check.json` 和 `manifest.json`。页面只接受服务器本地路径，不上传 BAM/FASTA 大文件。
+`Integration & Recommendation` Tab 当前主要读取 `outputs/gradio_demo_run` 下已有 DEG integration 输出，展示 standardized evidence、candidate gene table、recommendation report、current transcriptomics report 和 provenance 信息；不要把它描述为完整多组学自动整合 workflow。
+
+`谷子黄酮候选标记推荐` Tab 支持生成 evidence、运行标记推荐、一键运行完整流程和刷新已有结果，并展示 `flavonoid_marker_candidates.tsv`、`flavonoid_marker_report.md`、`qa_check.json` 和 `manifest.json`。页面只接受服务器本地路径，不上传 BAM/FASTA 大文件。
+
+Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 分析逻辑。`data/private/` 和 `outputs/` 不应提交 Git。
 
 ## 13. Git 安全流程
 
