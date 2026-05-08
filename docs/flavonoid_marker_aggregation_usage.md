@@ -1,0 +1,96 @@
+# Flavonoid Marker Aggregation 使用说明
+
+## Workflow 定位
+
+`flavonoid_marker_aggregation` 是谷子黄酮候选标记推荐的规则版、模板版、可复现 workflow。它读取已经标准化的 evidence TSV，聚合固定重点基因 `Si9g04210.1`、`Si5g31340.1`、`Si9g34380.1`，并生成候选表、Markdown 报告、QA JSON 和 manifest。
+
+核心结论为：
+
+```text
+优先围绕 Si9g04210.1、Si5g31340.1、Si9g34380.1 开发候选 SNP/InDel/KASP 标记，再用更大群体的基因型和黄酮含量数据验证关联。
+```
+
+## 和 RNA-seq DEG Workflow 的关系
+
+现有 RNA-seq DEG workflow 负责从 BAM 和 GFF 复现差异表达分析，并生成 transcriptomics evidence。flavonoid marker aggregation 不修改、不调用、不替代现有 DEG workflow；它只读取上游已经整理好的 flavonoid marker evidence 文件，用于跨转录组、代谢组、基因组/变异、功能注释和文献查阅 evidence 的报告聚合。
+
+## 生成学长数据包 Evidence
+
+先从本地 mini 数据包生成标准 evidence：
+
+```bash
+PYTHONPATH=src python3 scripts/demo/create_flavonoid_marker_evidence_from_package.py \
+  --dataset-dir data/private/flavonoid_marker_mini_5genes_50kb \
+  --outdir outputs/flavonoid_marker_from_package/evidence
+```
+
+输入数据来自学长要求的核心文件：
+
+- 转录组：`bam/` 中所有文件
+- 代谢组：`metabolome_raw_3372.tsv`
+- 基因组：`genome.fa` 和 `genome.gff`
+- 功能注释：`local_region_emapper_annotations.tsv`
+
+转换后的标准 evidence 位于：
+
+```text
+outputs/flavonoid_marker_from_package/evidence/
+├── transcriptome_evidence.tsv
+├── metabolome_evidence.tsv
+├── annotation_evidence.tsv
+├── genome_variant_evidence.tsv
+└── literature_evidence.tsv
+```
+
+## 运行 Aggregation CLI
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_from_package
+```
+
+该命令不调用外部 API，不引入 Deep Agents 或 LangGraph。
+
+## 输出文件位置
+
+```text
+outputs/flavonoid_marker_from_package/
+├── integration/
+│   └── flavonoid_marker_candidates.tsv
+├── reports/
+│   └── flavonoid_marker_report.md
+├── logs/
+│   └── qa_check.json
+└── manifest.json
+```
+
+`flavonoid_marker_candidates.tsv` 包含每个重点基因的转录组统计值、代谢物相关证据、功能注释、KEGG/pathway、variant_status 和 SNP/InDel/KASP/CAPS 标记建议。
+
+## 查看 QA 结果
+
+查看规则 QA：
+
+```bash
+cat outputs/flavonoid_marker_from_package/logs/qa_check.json
+```
+
+QA 会检查：
+
+- 三个固定重点基因是否出现
+- 是否包含“群体”“文献查阅”“DOI”“SNP”“InDel”“KASP”“CAPS”
+- 每个重点基因是否展示统计学数值
+- 是否展示 DOI
+- 是否给出 SNP/InDel/KASP/CAPS 标记类型建议
+
+## 为什么当前版本不伪造 SNP/InDel 位点
+
+当前 mini 数据包没有提供最终 SNP/InDel calling 结果表，也没有提供已经筛选好的 KASP/CAPS 位点。因此 `genome_variant_evidence.tsv` 中保留：
+
+```text
+variant_status=not_called
+```
+
+报告会明确说明：当前 mini 数据包未提供最终 SNP/InDel 位点；建议后续基于 BAM、`genome.fa/genome.gff` 或 `genome.bam_compatible.fa.gz` 与 `genome.original_coords.gff` 进行候选区域 SNP/InDel calling，再筛选 KASP/CAPS 可转化位点。
+
+这样可以区分“已有多组学候选证据”和“尚未完成正式变异位点 calling”，避免把未验证位置写成正式 marker。
