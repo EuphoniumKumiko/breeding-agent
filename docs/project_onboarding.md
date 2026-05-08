@@ -8,7 +8,7 @@
 
 - 已实现：RNA-seq 差异表达分析、结果报告、标准 transcriptomics evidence、候选基因表和第一版 recommendation report。
 - 已实现：从学长谷子黄酮标记 mini 数据包生成 aggregation evidence 的 demo 转换脚本。
-- 计划中：flavonoid marker aggregation CLI，用于整合 transcriptome、metabolome、annotation、genome variant 和 literature evidence，给出 SNP/InDel/KASP/CAPS 等可开发标记类型建议。
+- 已实现：flavonoid marker aggregation CLI，用于整合 transcriptome、metabolome、annotation、genome variant 和 literature evidence，给出 SNP/InDel/KASP/CAPS 等可开发标记类型建议，并输出 QA 检查结果。
 - 禁止事项：不能伪造 SNP/InDel 位点，不能伪造 DOI，不能把 `data/private/` 和 `outputs/` 中的数据加入 Git。
 
 当前项目根目录未发现 `README.md`，因此新人应优先阅读本文档、`AGENTS.md` 和 `docs/flavonoid_marker_package_import.md`。
@@ -31,18 +31,21 @@
 - 文档：`docs/flavonoid_marker_package_import.md`
 - 已验证命令使用 `python3` 可以运行，输出 5 个 evidence TSV 文件。
 
-计划中的黄酮标记 aggregation：
+已实现的黄酮标记 aggregation：
 
 - CLI：`src/breeding_agent/cli/flavonoid_markers.py`
 - workflow：`src/breeding_agent/workflows/flavonoid_marker_aggregation.py`
-- integration / reports：待实现。
+- aggregator：`src/breeding_agent/integration/flavonoid_marker_aggregator.py`
+- QA：`src/breeding_agent/integration/flavonoid_marker_qa.py`
+- report：`src/breeding_agent/reports/flavonoid_marker_report.py`
 
 ## 3. 目录结构速览
 
 ```text
 src/breeding_agent/
 ├── cli/
-│   └── deg.py
+│   ├── deg.py
+│   └── flavonoid_markers.py
 ├── core/
 │   ├── command_runner.py
 │   └── reproducibility.py
@@ -50,10 +53,13 @@ src/breeding_agent/
 │   ├── evidence_schema.py
 │   ├── transcriptomics_standardizer.py
 │   ├── candidate_aggregator.py
-│   └── recommendation_report.py
+│   ├── recommendation_report.py
+│   ├── flavonoid_marker_aggregator.py
+│   └── flavonoid_marker_qa.py
 ├── reports/
 │   ├── deg_result_parser.py
-│   └── deg_report.py
+│   ├── deg_report.py
+│   └── flavonoid_marker_report.py
 ├── validators/
 │   ├── bam_validator.py
 │   ├── gff_validator.py
@@ -62,7 +68,8 @@ src/breeding_agent/
 ├── web/
 │   └── gradio_app.py
 └── workflows/
-    └── rnaseq_deg.py
+    ├── rnaseq_deg.py
+    └── flavonoid_marker_aggregation.py
 
 scripts/demo/
 └── create_flavonoid_marker_evidence_from_package.py
@@ -271,11 +278,11 @@ PYTHONPATH=src python3 scripts/demo/create_flavonoid_marker_evidence_from_packag
 | `genome_variant_evidence.tsv` | 3 |
 | `literature_evidence.tsv` | 4 |
 
-## 9. 后续 flavonoid marker aggregation 预期流程
+## 9. flavonoid marker aggregation workflow
 
-当前状态：计划中 / 待实现。
+当前状态：已实现。
 
-预期 CLI：
+运行 CLI：
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
@@ -283,7 +290,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
   --outdir outputs/flavonoid_marker_from_package
 ```
 
-预期处理逻辑：
+处理逻辑：
 
 1. 读取 `transcriptome_evidence.tsv`
 2. 读取 `metabolome_evidence.tsv`
@@ -294,15 +301,38 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 7. 输出 marker 类型建议，例如 SNP/InDel/KASP/CAPS
 8. 明确说明当前是否已有 variant calling 结果
 9. 明确说明后续需要更大群体的基因型和黄酮含量数据验证关联
+10. 运行规则 QA，并把结果写入 `logs/qa_check.json`
 
-建议新增位置：
+已实现文件：
 
 ```text
 src/breeding_agent/cli/flavonoid_markers.py
 src/breeding_agent/workflows/flavonoid_marker_aggregation.py
 src/breeding_agent/integration/flavonoid_marker_aggregator.py
+src/breeding_agent/integration/flavonoid_marker_qa.py
 src/breeding_agent/reports/flavonoid_marker_report.py
 ```
+
+输出文件：
+
+```text
+outputs/flavonoid_marker_from_package/
+├── integration/
+│   └── flavonoid_marker_candidates.tsv
+├── reports/
+│   └── flavonoid_marker_report.md
+├── logs/
+│   └── qa_check.json
+└── manifest.json
+```
+
+查看 QA 检查：
+
+```bash
+cat outputs/flavonoid_marker_from_package/logs/qa_check.json
+```
+
+QA 会检查三个固定基因、`群体`、`文献查阅`、`DOI`、`SNP`、`InDel`、`KASP`、`CAPS`、每个基因的统计学数值、文献 DOI 和标记类型推荐是否齐全。
 
 ## 10. 输出文件说明
 
@@ -337,6 +367,26 @@ outputs/flavonoid_marker_from_package/evidence/
 4. 未核验的 DOI 不得写成最终报告依据。
 5. 不允许编造 DOI、题名或结论。
 
+aggregation 输出目录：
+
+```text
+outputs/flavonoid_marker_from_package/
+```
+
+已实现 aggregation 输出：
+
+- `integration/flavonoid_marker_candidates.tsv`：聚合三个重点基因的转录组统计值、代谢组相关性、功能注释、KEGG/pathway、variant_status 和 SNP/InDel/KASP/CAPS 推荐。
+- `reports/flavonoid_marker_report.md`：中文 Markdown 推荐报告，包含固定核心结论、统计学数值、文献查阅 DOI、标记类型建议、后续验证方案和当前限制。
+- `logs/qa_check.json`：纯规则 QA 结果。
+- `manifest.json`：workflow 输入、输出、状态和 warning 摘要。
+
+当前限制：
+
+- aggregation 是规则版/模板版 workflow，不调用外部 API，不引入 Deep Agents 或 LangGraph。
+- 文献 DOI 只来自 `literature_evidence.tsv` 或经过人工核验的输入，不伪造 DOI。
+- 当前 mini 数据包没有最终 SNP/InDel calling 结果时，报告必须保留 `variant_status=not_called`。
+- 不伪造 SNP/InDel 具体位点；后续应基于 BAM、`genome.fa/genome.gff` 或 `genome.bam_compatible.fa.gz` 与 `genome.original_coords.gff` 做候选区域 SNP/InDel calling，再筛选 KASP/CAPS 可转化位点。
+
 ## 11. 人工校验清单
 
 运行 evidence 转换后，人工检查：
@@ -348,6 +398,7 @@ outputs/flavonoid_marker_from_package/evidence/
 - `annotation_evidence.tsv` 是否保留 KEGG 和 PFAM。
 - `genome_variant_evidence.tsv` 是否为 `variant_status=not_called`，且没有伪造 SNP/InDel 位点。
 - `literature_evidence.tsv` 是否包含 DOI，且后续报告只使用核验过的 DOI。
+- `logs/qa_check.json` 中 `passed` 是否为 `true`；如为 `false`，根据 `missing_items` 补齐报告或 evidence。
 - 最终文本是否包含固定结论句：
 
 ```text
@@ -395,7 +446,7 @@ Codex 后续开发必须遵守：
 - 不要伪造 SNP/InDel 位点。
 - 不要伪造 DOI。
 - 没有 variant calling 结果时，保持 `variant_status=not_called`。
-- 没有实现的 CLI 必须写“计划中”或“待实现”。
+- 已实现的 CLI 可以写“已实现”；没有实现的 CLI 必须写“计划中”或“待实现”。
 - 修改后必须运行 `git status --short` 和 `git diff --stat`；如果修改 Python 文件，再运行 `python3 -m py_compile <changed_python_files>`。
 
 ## 14. 常见问题
@@ -418,8 +469,16 @@ BAM 的 reference naming 和坐标系统必须和 FASTA/GFF 兼容。`genome.bam
 
 ### flavonoid marker aggregation CLI 现在能运行吗？
 
-不能。`breeding_agent.cli.flavonoid_markers` 当前是计划中 / 待实现。当前能运行的是 evidence 转换脚本。
+能。先生成 evidence，再运行：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_from_package
+```
+
+报告输出到 `outputs/flavonoid_marker_from_package/reports/flavonoid_marker_report.md`，QA 输出到 `outputs/flavonoid_marker_from_package/logs/qa_check.json`。
 
 ### 文献查阅现在完成了吗？
 
-当前 evidence 中已有 seed DOI，并写入 `literature_evidence.tsv`。正式报告前仍需要人工或可靠数据库核验 DOI、题名、年份和具体相关性。不能把未核验信息写成最终结论。
+当前 evidence 中已有 seed DOI，并写入 `literature_evidence.tsv`。aggregation 报告会展示这些 DOI，并说明 workflow 不调用外部 API、不补写未核对 DOI。正式报告扩展时仍需要人工或可靠数据库核验 DOI、题名、年份和具体相关性，不能把未核验信息写成最终结论。

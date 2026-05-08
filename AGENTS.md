@@ -51,6 +51,11 @@ These values are package-derived evidence, not final breeding validation.
 - Reports: `src/breeding_agent/reports/`
 - Integration: `src/breeding_agent/integration/`
 - Flavonoid package evidence converter: `scripts/demo/create_flavonoid_marker_evidence_from_package.py`
+- Flavonoid marker aggregation CLI: `src/breeding_agent/cli/flavonoid_markers.py`
+- Flavonoid marker aggregation workflow: `src/breeding_agent/workflows/flavonoid_marker_aggregation.py`
+- Flavonoid marker aggregator: `src/breeding_agent/integration/flavonoid_marker_aggregator.py`
+- Flavonoid marker QA: `src/breeding_agent/integration/flavonoid_marker_qa.py`
+- Flavonoid marker report: `src/breeding_agent/reports/flavonoid_marker_report.py`
 - Flavonoid package import doc: `docs/flavonoid_marker_package_import.md`
 
 ## Do Not Modify Without Explicit Request
@@ -105,9 +110,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.deg \
   --threads 4
 ```
 
-## Planned Command
-
-The flavonoid marker aggregation CLI is planned /待实现. Expected future command:
+Run the implemented flavonoid marker aggregation CLI:
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
@@ -115,7 +118,31 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
   --outdir outputs/flavonoid_marker_from_package
 ```
 
-Do not present this CLI as implemented until `src/breeding_agent/cli/flavonoid_markers.py` exists and has been tested.
+Expected aggregation outputs:
+
+```text
+outputs/flavonoid_marker_from_package/
+├── integration/
+│   └── flavonoid_marker_candidates.tsv
+├── reports/
+│   └── flavonoid_marker_report.md
+├── logs/
+│   └── qa_check.json
+└── manifest.json
+```
+
+Check the QA result:
+
+```bash
+cat outputs/flavonoid_marker_from_package/logs/qa_check.json
+```
+
+Current flavonoid marker aggregation limits:
+
+- It is a rule-based/template workflow; it does not call external APIs, Deep Agents, or LangGraph.
+- It reads DOI values from `literature_evidence.tsv` and must not fabricate DOI values.
+- If `genome_variant_evidence.tsv` has `variant_status=not_called`, the report must state that the mini package does not provide final SNP/InDel positions.
+- Do not fabricate SNP/InDel positions. Recommend follow-up candidate-region SNP/InDel calling from BAM plus `genome.fa/genome.gff` or `genome.bam_compatible.fa.gz` with `genome.original_coords.gff`, then screen KASP/CAPS-convertible loci.
 
 ## Required Checks After Codex Changes
 
