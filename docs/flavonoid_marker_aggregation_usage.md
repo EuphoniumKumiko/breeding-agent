@@ -2,7 +2,7 @@
 
 ## Workflow 定位
 
-`flavonoid_marker_aggregation` 是谷子黄酮候选标记推荐的规则版、模板版、可复现 workflow。它读取已经标准化的 evidence TSV，聚合固定重点基因 `Si9g04210.1`、`Si5g31340.1`、`Si9g34380.1`，并生成候选表、Markdown 报告、QA JSON 和 manifest。
+`flavonoid_marker_aggregation` 是谷子黄酮候选标记推荐的规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。它读取已经标准化的 evidence TSV，聚合固定重点基因 `Si9g04210.1`、`Si5g31340.1`、`Si9g34380.1`，并生成候选表、Markdown 报告、QA JSON 和 manifest。
 
 核心结论为：
 
@@ -50,7 +50,34 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
   --outdir outputs/flavonoid_marker_from_package
 ```
 
-该命令不调用外部 API，不引入 Deep Agents 或 LangGraph。
+该命令不调用外部 API，不引入 Deep Agents 或 LangGraph，不调用 LLM。
+
+## DeepRare-like lightweight agent layer
+
+当前 agent 层是规则版编排层，不调用 LLM，不调用外部 API，也不引入 Deep Agents 或 LangGraph。它的目标是把 aggregation workflow 拆成可审阅的角色模块，而不是改变 CLI 或输出结构。
+
+已实现模块：
+
+```text
+src/breeding_agent/agents/
+├── flavonoid_central_host.py
+├── flavonoid_literature_agent.py
+├── flavonoid_marker_recommendation_agent.py
+├── flavonoid_validation_agent.py
+├── flavonoid_reviewer_agent.py
+└── flavonoid_final_qa_agent.py
+```
+
+角色分工：
+
+- `FlavonoidCentralHost`：DeepRare-like central host，组织 evidence 聚合、文献查阅、标记推荐、验证方案、review 和 final QA。
+- `FlavonoidLiteratureAgent`：读取 `literature_evidence.tsv`，原样展示 DOI，不编造 DOI。
+- `FlavonoidMarkerRecommendationAgent`：根据 candidate evidence 和 `variant_status` 推荐 SNP/InDel/KASP/CAPS；`variant_status=not_called` 时明确说明没有最终 SNP/InDel 位点。
+- `FlavonoidValidationAgent`：生成 Sanger、候选区域 SNP/InDel calling、KASP、CAPS/dCAPS、群体关联分析、qRT-PCR 和 LC-MS/MS 验证方案。
+- `FlavonoidReviewerAgent`：检查过度推断、缺失统计值、缺失 DOI、缺失验证方案和疑似伪造 variant 位点。
+- `FlavonoidFinalQAAgent`：包装复用 `src/breeding_agent/integration/flavonoid_marker_qa.py`，不重复实现冲突 QA 逻辑。
+
+后续如果需要接入大模型，应通过明确的 adapter 接入 `FlavonoidLiteratureAgent`、`FlavonoidMarkerRecommendationAgent` 或 `FlavonoidReviewerAgent`，并保留当前规则 fallback。接入前仍必须遵守：不伪造 DOI、不伪造 SNP/InDel 位点、`variant_status=not_called` 时不能输出具体位点。
 
 ## 输出文件位置
 

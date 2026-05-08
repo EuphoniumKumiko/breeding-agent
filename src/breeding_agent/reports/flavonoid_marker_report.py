@@ -25,6 +25,10 @@ def generate_flavonoid_marker_report(
     candidate_rows: list[dict[str, str]],
     literature_rows: list[dict[str, str]],
     warnings: list[str],
+    literature_review_text: str | None = None,
+    marker_recommendation_text: str | None = None,
+    validation_plan_text: str | None = None,
+    reviewer_notes: str | None = None,
     qa_result: dict[str, object] | None = None,
 ) -> Path:
     """Generate a Chinese-facing flavonoid marker recommendation report."""
@@ -38,10 +42,28 @@ def generate_flavonoid_marker_report(
             candidate_rows=candidate_rows,
             literature_rows=literature_rows,
             warnings=warnings,
+            literature_review_text=literature_review_text,
+            marker_recommendation_text=marker_recommendation_text,
+            validation_plan_text=validation_plan_text,
+            reviewer_notes=reviewer_notes,
             qa_result=qa_result,
         ),
         encoding="utf-8",
     )
+    return report_file
+
+
+def generate_flavonoid_marker_report_from_agent_result(
+    *,
+    outdir: Path,
+    agent_result: dict[str, object],
+) -> Path:
+    """Write a report from the CentralHost structured result."""
+
+    report_dir = outdir / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_file = report_dir / REPORT_FILENAME
+    report_file.write_text(str(agent_result["report_text"]), encoding="utf-8")
     return report_file
 
 
@@ -51,6 +73,10 @@ def render_flavonoid_marker_report(
     candidate_rows: list[dict[str, str]],
     literature_rows: list[dict[str, str]],
     warnings: list[str],
+    literature_review_text: str | None = None,
+    marker_recommendation_text: str | None = None,
+    validation_plan_text: str | None = None,
+    reviewer_notes: str | None = None,
     qa_result: dict[str, object] | None = None,
 ) -> str:
     """Render the report body."""
@@ -110,24 +136,22 @@ def render_flavonoid_marker_report(
             _annotation_table(ordered_rows),
             "",
             "## 8. 文献查阅过程",
-            _literature_section(literature_rows),
+            _literature_section(literature_rows, literature_review_text),
             "",
             "## 9. 标记类型推荐：SNP/InDel/KASP/CAPS",
-            _marker_recommendation_section(ordered_rows),
+            marker_recommendation_text
+            if marker_recommendation_text
+            else _marker_recommendation_section(ordered_rows),
             "",
             "## 10. 后续验证方案",
-            "\n".join(
-                [
-                    "- 基于 BAM、genome.fa/genome.gff 或 genome.bam_compatible.fa.gz 与 genome.original_coords.gff 对候选区域进行 SNP/InDel calling。",
-                    "- 对 calling 后的候选 SNP/InDel 做测序深度、缺失率、等位基因频率和重复样本一致性过滤。",
-                    "- 将高置信 SNP/InDel 转化为 KASP 标记；若变异改变限制性内切酶识别位点，可开发 CAPS 标记。",
-                    "- 在更大群体中同步采集基因型和黄酮含量数据，验证标记与黄酮性状的关联和稳定性。",
-                    "- 对 Si9g04210.1、Si5g31340.1、Si9g34380.1 做候选区域单倍型和表达/代谢物联合验证。",
-                ]
-            ),
+            validation_plan_text if validation_plan_text else _default_validation_plan(),
             "",
             "## 11. 不确定性与限制",
-            _limitations_section(warnings=warnings, has_not_called=has_not_called),
+            _limitations_section(
+                warnings=warnings,
+                has_not_called=has_not_called,
+                reviewer_notes=reviewer_notes,
+            ),
             "",
             "## 12. QA 检查结果",
             _qa_section(qa_result),
@@ -222,7 +246,13 @@ def _annotation_table(rows: list[dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def _literature_section(literature_rows: list[dict[str, str]]) -> str:
+def _literature_section(
+    literature_rows: list[dict[str, str]],
+    literature_review_text: str | None,
+) -> str:
+    if literature_review_text:
+        return literature_review_text
+
     if not literature_rows:
         return (
             "未读取到 `literature_evidence.tsv`。当前报告不能满足 DOI 展示要求；"
@@ -270,7 +300,24 @@ def _marker_recommendation_section(rows: list[dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def _limitations_section(*, warnings: list[str], has_not_called: bool) -> str:
+def _default_validation_plan() -> str:
+    return "\n".join(
+        [
+            "- 基于 BAM、genome.fa/genome.gff 或 genome.bam_compatible.fa.gz 与 genome.original_coords.gff 对候选区域进行 SNP/InDel calling。",
+            "- 对 calling 后的候选 SNP/InDel 做测序深度、缺失率、等位基因频率和重复样本一致性过滤。",
+            "- 将高置信 SNP/InDel 转化为 KASP 标记；若变异改变限制性内切酶识别位点，可开发 CAPS 标记。",
+            "- 在更大群体中同步采集基因型和黄酮含量数据，验证标记与黄酮性状的关联和稳定性。",
+            "- 对 Si9g04210.1、Si5g31340.1、Si9g34380.1 做候选区域单倍型和表达/代谢物联合验证。",
+        ]
+    )
+
+
+def _limitations_section(
+    *,
+    warnings: list[str],
+    has_not_called: bool,
+    reviewer_notes: str | None,
+) -> str:
     lines = [
         "- 当前统计值来自 mini evidence，用于候选排序和报告复现，不等同于最终育种验证。",
         "- 当前 workflow 不调用外部 API；文献 DOI 只来自 evidence 文件中已提供或已核对的记录。",
@@ -278,6 +325,8 @@ def _limitations_section(*, warnings: list[str], has_not_called: bool) -> str:
     ]
     if has_not_called:
         lines.append(f"- {NOT_CALLED_VARIANT_NOTE}")
+    if reviewer_notes:
+        lines.append(f"- {reviewer_notes}")
     if warnings:
         lines.append("- Evidence warning: " + "；".join(sorted(set(warnings))))
     return "\n".join(lines)

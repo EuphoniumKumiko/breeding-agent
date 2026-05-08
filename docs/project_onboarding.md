@@ -8,7 +8,7 @@
 
 - 已实现：RNA-seq 差异表达分析、结果报告、标准 transcriptomics evidence、候选基因表和第一版 recommendation report。
 - 已实现：从学长谷子黄酮标记 mini 数据包生成 aggregation evidence 的 demo 转换脚本。
-- 已实现：flavonoid marker aggregation CLI，用于整合 transcriptome、metabolome、annotation、genome variant 和 literature evidence，给出 SNP/InDel/KASP/CAPS 等可开发标记类型建议，并输出 QA 检查结果。
+- 已实现：flavonoid marker aggregation CLI，采用规则版 workflow + DeepRare-like lightweight agent layer，整合 transcriptome、metabolome、annotation、genome variant 和 literature evidence，给出 SNP/InDel/KASP/CAPS 等可开发标记类型建议，并输出 QA 检查结果。
 - 禁止事项：不能伪造 SNP/InDel 位点，不能伪造 DOI，不能把 `data/private/` 和 `outputs/` 中的数据加入 Git。
 
 当前项目根目录未发现 `README.md`，因此新人应优先阅读本文档、`AGENTS.md` 和 `docs/flavonoid_marker_package_import.md`。
@@ -35,6 +35,7 @@
 
 - CLI：`src/breeding_agent/cli/flavonoid_markers.py`
 - workflow：`src/breeding_agent/workflows/flavonoid_marker_aggregation.py`
+- lightweight agents：`src/breeding_agent/agents/`
 - aggregator：`src/breeding_agent/integration/flavonoid_marker_aggregator.py`
 - QA：`src/breeding_agent/integration/flavonoid_marker_qa.py`
 - report：`src/breeding_agent/reports/flavonoid_marker_report.py`
@@ -43,6 +44,13 @@
 
 ```text
 src/breeding_agent/
+├── agents/
+│   ├── flavonoid_central_host.py
+│   ├── flavonoid_literature_agent.py
+│   ├── flavonoid_marker_recommendation_agent.py
+│   ├── flavonoid_validation_agent.py
+│   ├── flavonoid_reviewer_agent.py
+│   └── flavonoid_final_qa_agent.py
 ├── cli/
 │   ├── deg.py
 │   └── flavonoid_markers.py
@@ -280,7 +288,7 @@ PYTHONPATH=src python3 scripts/demo/create_flavonoid_marker_evidence_from_packag
 
 ## 9. flavonoid marker aggregation workflow
 
-当前状态：已实现。
+当前状态：已实现，当前形态为规则版 workflow + DeepRare-like lightweight agent layer。
 
 运行 CLI：
 
@@ -298,14 +306,21 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 4. 读取 `genome_variant_evidence.tsv`
 5. 读取 `literature_evidence.tsv`
 6. 聚合每个目标基因的转录组、代谢组、注释、变异状态和文献证据
-7. 输出 marker 类型建议，例如 SNP/InDel/KASP/CAPS
-8. 明确说明当前是否已有 variant calling 结果
-9. 明确说明后续需要更大群体的基因型和黄酮含量数据验证关联
-10. 运行规则 QA，并把结果写入 `logs/qa_check.json`
+7. 通过 `FlavonoidLiteratureAgent` 生成文献查阅过程并原样展示 DOI
+8. 通过 `FlavonoidMarkerRecommendationAgent` 输出 marker 类型建议，例如 SNP/InDel/KASP/CAPS
+9. 通过 `FlavonoidValidationAgent` 输出后续 Sanger、SNP/InDel calling、KASP、CAPS/dCAPS、群体关联、qRT-PCR 和 LC-MS/MS 验证方案
+10. 通过 `FlavonoidReviewerAgent` 检查过度推断、缺失统计值、缺失 DOI、缺失验证方案和疑似伪造 variant 位点
+11. 通过 `FlavonoidFinalQAAgent` 复用现有规则 QA，并把结果写入 `logs/qa_check.json`
 
 已实现文件：
 
 ```text
+src/breeding_agent/agents/flavonoid_central_host.py
+src/breeding_agent/agents/flavonoid_literature_agent.py
+src/breeding_agent/agents/flavonoid_marker_recommendation_agent.py
+src/breeding_agent/agents/flavonoid_validation_agent.py
+src/breeding_agent/agents/flavonoid_reviewer_agent.py
+src/breeding_agent/agents/flavonoid_final_qa_agent.py
 src/breeding_agent/cli/flavonoid_markers.py
 src/breeding_agent/workflows/flavonoid_marker_aggregation.py
 src/breeding_agent/integration/flavonoid_marker_aggregator.py
@@ -382,10 +397,11 @@ outputs/flavonoid_marker_from_package/
 
 当前限制：
 
-- aggregation 是规则版/模板版 workflow，不调用外部 API，不引入 Deep Agents 或 LangGraph。
+- aggregation 是规则版/模板版 workflow + DeepRare-like lightweight agent layer，不调用 LLM，不调用外部 API，不引入 Deep Agents 或 LangGraph。
 - 文献 DOI 只来自 `literature_evidence.tsv` 或经过人工核验的输入，不伪造 DOI。
 - 当前 mini 数据包没有最终 SNP/InDel calling 结果时，报告必须保留 `variant_status=not_called`。
 - 不伪造 SNP/InDel 具体位点；后续应基于 BAM、`genome.fa/genome.gff` 或 `genome.bam_compatible.fa.gz` 与 `genome.original_coords.gff` 做候选区域 SNP/InDel calling，再筛选 KASP/CAPS 可转化位点。
+- 后续如果需要接入 LLM，应通过明确 adapter 接入 LiteratureAgent、MarkerRecommendationAgent 或 ReviewerAgent，并保留当前规则 fallback。
 
 ## 11. 人工校验清单
 
