@@ -1,5 +1,8 @@
 # Gradio 谷子黄酮候选标记推荐 Tab 使用说明
 
+适用读者：需要使用或维护黄酮标记推荐 Gradio Tab 的同学。  
+阅读目标：理解普通推荐、variant evidence、LangGraph workflow、本地 LLM Reviewer、Lobster-style benchmark 展示和刷新逻辑。
+
 本文档按当前 `src/breeding_agent/web/gradio_app.py` 的实际实现描述。当前 Gradio 页面是一个 `gr.Blocks` 应用，标题为：
 
 ```text
@@ -68,6 +71,7 @@ variant_calling_dir
 langgraph_outdir
 Use LLM Reviewer
 LLM Config Path
+Lobster-style Benchmark inputs
 ```
 
 默认值：
@@ -80,6 +84,10 @@ variant_calling_dir = outputs/genomics_variant_calling
 langgraph_outdir = outputs/flavonoid_marker_langgraph
 Use LLM Reviewer = false
 LLM Config Path = configs/llm.local.yaml
+Lobster Evidence Dir = outputs/flavonoid_marker_from_package/evidence
+Lobster Variant Calling Dir = outputs/genomics_variant_calling
+Internal Agent Outdir = outputs/flavonoid_marker_langgraph_llm_real
+Lobster Benchmark Outdir = outputs/lobster_external_agent_benchmark
 ```
 
 含义：
@@ -91,6 +99,10 @@ LLM Config Path = configs/llm.local.yaml
 - `langgraph_outdir`：LangGraph workflow 输出目录，用于展示 graph trace、节点决策表、summary、最终报告、QA 和 manifest。
 - `Use LLM Reviewer`：只控制 LangGraph workflow 的 ReviewerAgent 本地 LLM 审阅增强。未勾选时保持原行为，不调用 LLM。
 - `LLM Config Path`：本地 OpenAI-compatible LLM 配置路径。页面只传递和显示路径，不读取或展示配置内容。
+- `Lobster Evidence Dir`：Lobster-style benchmark 读取的标准黄酮 marker evidence 目录。
+- `Lobster Variant Calling Dir`：Lobster-style benchmark 可选读取的 Candidate Variant Calling 输出目录。
+- `Internal Agent Outdir`：用于对照的内部 LangGraph Agent 输出目录。
+- `Lobster Benchmark Outdir`：Lobster-style benchmark 输出目录。
 
 ## 按钮
 
@@ -103,6 +115,8 @@ LLM Config Path = configs/llm.local.yaml
 刷新当前结果
 Run LangGraph Workflow
 Refresh LangGraph Results
+Run Lobster-style Benchmark
+Refresh Lobster Benchmark Results
 ```
 
 ### 生成 evidence
@@ -198,6 +212,26 @@ LangGraph is not installed. Install with: pip install langgraph
 LLM Reviewer not enabled / 未启用本地大模型审阅
 ```
 
+### Run Lobster-style Benchmark
+
+调用现有：
+
+```text
+src/breeding_agent/workflows/lobster_external_agent_benchmark.py
+```
+
+Gradio 只把页面输入传给 workflow，不重复实现 Lobster-style benchmark 业务逻辑。当前 benchmark 是 reference benchmark / mock_reference，不是真实 Lobster AI 运行结果，不安装、不导入、不调用 Lobster。
+
+它的作用是对比开源多组学 Agent 风格输出与本项目内部育种业务 Agent 输出，不替代当前 LangGraph 主流程。
+
+### Refresh Lobster Benchmark Results
+
+只读取 `Lobster Benchmark Outdir` 下已有输出，不重新运行 benchmark。若结果不存在，页面提示：
+
+```text
+尚未生成 Lobster-style benchmark 结果，请先点击 Run Lobster-style Benchmark。
+```
+
 ## 页面输出
 
 当前 Tab 展示：
@@ -217,6 +251,12 @@ LLM Reviewer not enabled / 未启用本地大模型审阅
 - Node Decision Table
 - LangGraph Final Report
 - Details: `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`
+- Lobster benchmark status
+- `backend_name` / `backend_mode` / `real_lobster_run`
+- `lobster_style_agent_report.md`
+- `comparison_matrix.tsv`
+- `lobster_vs_internal_comparison.md`
+- `benchmark_manifest.json`
 
 `LLM Reviewer Status` 展示：
 
@@ -247,6 +287,18 @@ outputs/flavonoid_marker_langgraph/reports/flavonoid_marker_report.md
 outputs/flavonoid_marker_langgraph/logs/qa_check.json
 outputs/flavonoid_marker_langgraph/manifest.json
 ```
+
+Lobster-style benchmark 输出通常位于：
+
+```text
+outputs/lobster_external_agent_benchmark/lobster_reference/lobster_style_agent_report.md
+outputs/lobster_external_agent_benchmark/lobster_reference/lobster_style_gene_assessments.tsv
+outputs/lobster_external_agent_benchmark/comparison/comparison_matrix.tsv
+outputs/lobster_external_agent_benchmark/comparison/lobster_vs_internal_comparison.md
+outputs/lobster_external_agent_benchmark/logs/benchmark_manifest.json
+```
+
+页面会展示 `real_lobster_run=false`，明确当前不是 Lobster AI 真实运行结果。
 
 如果文件不存在，页面会显示 `File not found` 或 warning，不会把缺失文件伪装成已有结果。
 
@@ -292,9 +344,11 @@ QA 会检查：
 
 - 当前 Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 逻辑。
 - 默认黄酮推荐 workflow 不调用外部 API、不调用真实大模型，也不依赖 LangGraph 或 Deep Agents。
-- LangGraph 展示区使用现有规则化 agents，不调用真实大模型；LangGraph 是当前主线开源智能体编排框架，只负责编排 LiteratureAgent、MarkerRecommendationAgent、ValidationAgent、ReviewerAgent、FinalQAAgent。
+- LangGraph 展示区默认使用现有规则化 agents；勾选 `Use LLM Reviewer` 时只增强 ReviewerAgent。
 - `graph_trace.json` 和 `node_decision_table.tsv` 用于追踪每个节点的输入、输出、证据、警告和限制。
-- Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型接入是下一阶段。
+- Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph。
+- Lobster-style benchmark 已接入 Gradio 展示；它是 external reference / mock benchmark，不是真实 Lobster AI 运行结果，不替代 LangGraph 主流程。
+- 本地 LLM 不直接生成 SNP/InDel/KASP/CAPS 结论；输出仍经过 output_guard 和 FinalQAAgent，不通过会 fallback 到规则版 ReviewerAgent。
 - DOI 只能来自已核验的 evidence，不能伪造。
 - 当前 mini 数据包未提供最终 SNP/InDel 位点，不能伪造 SNP/InDel 坐标。
 - 如果 genome evidence 中 `variant_status=not_called`，报告必须说明后续需要候选区域 variant calling。

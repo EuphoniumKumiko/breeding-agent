@@ -1,5 +1,8 @@
 # Gradio Workbench 模块导读
 
+适用读者：维护 Gradio 展示层或准备把新 workflow 接入页面的同学。  
+阅读目标：理解当前 Tab 结构、后端映射、LLM Reviewer 状态展示和 Gradio 的边界。
+
 ## 1. 模块作用
 
 Gradio Workbench 是 `breeding-agent` 的本地展示层，用于在浏览器中触发已有 workflow 或读取已有输出。本文档以当前 `src/breeding_agent/web/gradio_app.py` 的实际实现为准。
@@ -31,6 +34,7 @@ Agri Multi-omics Breeding Agent Demo
 | `src/breeding_agent/workflows/genomics_region.py` | Genomics region 后端 |
 | `src/breeding_agent/workflows/genomics_variant_calling.py` | Genomics Candidate Variant Calling MVP 后端 |
 | `src/breeding_agent/workflows/flavonoid_marker_aggregation.py` | Flavonoid marker 后端 |
+| `src/breeding_agent/workflows/lobster_external_agent_benchmark.py` | Lobster-style external benchmark 后端 |
 | `src/breeding_agent/integration/flavonoid_marker_package_importer.py` | evidence 生成逻辑 |
 | `docs/gradio_flavonoid_marker_usage.md` | 黄酮标记 Tab 说明 |
 | `docs/gradio_omics_modules_usage.md` | 多组学 Tab 说明 |
@@ -87,6 +91,8 @@ GRADIO_SERVER_PORT
 | `谷子黄酮候选标记推荐` | `refresh_flavonoid_outputs()` | 读取已有 flavonoid marker 输出 |
 | `谷子黄酮候选标记推荐` | `run_langgraph_workflow_ui()` | `run_flavonoid_marker_langgraph_task()` |
 | `谷子黄酮候选标记推荐` | `refresh_langgraph_outputs()` | 读取已有 LangGraph workflow 输出 |
+| `谷子黄酮候选标记推荐` | `run_lobster_benchmark_ui()` | `run_lobster_external_agent_benchmark_task()` |
+| `谷子黄酮候选标记推荐` | `refresh_lobster_benchmark_outputs()` | 读取已有 Lobster-style benchmark 输出 |
 
 ## 6. 各 Tab 展示内容
 
@@ -201,6 +207,10 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 - `langgraph_outdir`
 - `Use LLM Reviewer`
 - `LLM Config Path`
+- `Lobster Evidence Dir`
+- `Variant Calling Dir`
+- `Internal Agent Outdir`
+- `Lobster Benchmark Outdir`
 
 按钮：
 
@@ -210,6 +220,8 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 - `刷新当前结果`
 - `Run LangGraph Workflow`
 - `Refresh LangGraph Results`
+- `Run Lobster-style Benchmark`
+- `Refresh Lobster Benchmark Results`
 
 输出：
 
@@ -226,12 +238,20 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 - `Node Decision Table`
 - `Final Report`
 - Details: `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`
+- Lobster benchmark status
+- `backend_name` / `backend_mode` / `real_lobster_run`
+- `lobster_style_agent_report.md`
+- `comparison_matrix.tsv`
+- `lobster_vs_internal_comparison.md`
+- `benchmark_manifest.json`
 
 `variant_calling_dir` 可选，默认 `outputs/genomics_variant_calling`。留空或目录不存在时保持原有黄酮推荐流程；目录存在时读取 `candidate_variants.tsv`、`kasp_candidate_sites.tsv` 和 `caps_candidate_sites.tsv`，并在报告中展示三个固定基因的 `variant_evidence_status`、PASS/LowQual、SNP/InDel、KASP preliminary screening 和 CAPS screening 统计。LowQual 不应直接优先用于 KASP/CAPS 开发，KASP/CAPS 表不是最终引物或酶切方案。
 
 `langgraph_outdir` 默认 `outputs/flavonoid_marker_langgraph`。`Run LangGraph Workflow` 调用现有 LangGraph workflow；`Refresh LangGraph Results` 只读取已有 graph 输出。`Use LLM Reviewer` 默认关闭；勾选后只增强 ReviewerAgent，并使用 `LLM Config Path` 指向的本地 OpenAI-compatible 配置。页面不读取或展示配置文件内容，只显示路径和运行状态。
 
 LLM Reviewer 状态从 `graph_trace.json`、`graph_state_final.json` 或 manifest 中读取，展示 `llm_reviewer_enabled`、`llm_used`、`fallback_used`、`model`、`guard_passed` 和 `fallback_reason`。本地 LLM 不直接生成 SNP/InDel/KASP/CAPS 结论；输出仍经过 output_guard 和 FinalQAAgent，不通过会 fallback 到规则版 ReviewerAgent。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph。
+
+`Lobster Benchmark Outdir` 默认 `outputs/lobster_external_agent_benchmark`。`Run Lobster-style Benchmark` 调用现有 Lobster-style benchmark workflow；`Refresh Lobster Benchmark Results` 只读取已有 benchmark 输出。该区展示 `backend_name=lobster_ai_reference`、`backend_mode=mock_reference`、`real_lobster_run=false`、`lobster_style_agent_report.md`、`comparison_matrix.tsv`、`lobster_vs_internal_comparison.md` 和 `benchmark_manifest.json`。当前不是 Lobster AI 真实运行结果，只是 external reference benchmark，不替代 LangGraph 主流程。
 
 ## 7. 普通启动命令
 
@@ -270,6 +290,7 @@ outputs/gradio_genomics_run/
 outputs/genomics_variant_calling/
 outputs/flavonoid_marker_from_package/
 outputs/flavonoid_marker_langgraph/
+outputs/lobster_external_agent_benchmark/
 ```
 
 这些都是运行输出目录，不应提交 Git。

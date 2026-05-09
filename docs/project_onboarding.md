@@ -1,5 +1,8 @@
 # breeding-agent 项目上手文档
 
+适用读者：新加入项目的同学、需要快速复现当前 workflow 的开发者、准备认领 Agent 或 Gradio 任务的人。  
+阅读目标：用一份文档了解项目当前能力、运行入口、禁止边界和第一天上手路线。
+
 ## 1. 项目定位
 
 `breeding-agent` 是一个面向作物多组学育种分析的可复现项目。当前项目的研究作物是谷子，已经从 RNA-seq DEG workflow 扩展到黄酮候选标记推荐、候选区域 variant calling、规则化智能体聚合、LangGraph 编排、Deep Agents POC、Gradio 展示和 Promoter Design scaffold。
@@ -18,6 +21,17 @@
 - 禁止事项：不能伪造 SNP/InDel 位点，不能伪造 DOI，不能伪造启动子序列，不能把 `data/private/` 和 `outputs/` 中的数据加入 Git。
 
 新人应优先阅读 `README.md`、本文档、`AGENTS.md` 和 `docs/flavonoid_marker_package_import.md`。
+
+## 新同学 1 天上手路线
+
+| 时间 | 任务 | 阅读/操作 |
+| --- | --- | --- |
+| 第 1 小时 | 读架构 | `README.md`、`docs/architecture_overview.md`、`docs/developer/codebase_map.md` |
+| 第 2-3 小时 | 读业务代码地图 | `docs/developer/business_logic_by_file.md`，重点看自己要改的目录 |
+| 第 4 小时 | 跑普通 CLI | `flavonoid_markers` 或 `genomics_variants`，确认 outputs 和 QA |
+| 第 5 小时 | 跑 LangGraph / LLM Reviewer | 先普通 LangGraph，再按本地环境决定是否跑 `--use-llm-reviewer` |
+| 第 6 小时 | 看 Gradio | 了解每个 Tab 如何调用后端 workflow |
+| 第 7-8 小时 | 选分支任务 | 参考 `docs/developer/agent_parallel_development_guide.md`，一个 Agent 或一个展示区一个分支 |
 
 ## 2. 当前已有能力
 
@@ -512,7 +526,7 @@ outputs/flavonoid_marker_langgraph/
 └── manifest.json
 ```
 
-为什么先接 LangGraph，而不是先接开源本地大模型：当前优先稳定 node/state/trace 的可复现编排边界；真实模型会引入不可复现输出、部署依赖和伪造 DOI/SNP/InDel 风险。Deep Agents POC 已作为并行 harness 验证入口，但本地开源大模型接入仍是下一阶段。
+为什么先接 LangGraph，再接本地 LLM Reviewer：当前优先稳定 node/state/trace 的可复现编排边界；模型输出会引入不可复现文本和伪造 DOI/SNP/InDel 风险。因此当前只把本地 OpenAI-compatible LLM 接到 ReviewerAgent，并用 output_guard 与 FinalQAAgent 兜底。Deep Agents POC 已作为并行 harness 验证入口，但不替代 LangGraph。
 
 ## 11. Genomics Candidate Variant Calling MVP
 
@@ -615,6 +629,8 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 同一 Tab 还包含 `LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）` 小节。默认 `langgraph_outdir=outputs/flavonoid_marker_langgraph`。点击 `Run LangGraph Workflow` 会调用已有 LangGraph workflow；点击 `Refresh LangGraph Results` 只读取已有 graph 输出。页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、最终报告，以及 Details 中的 `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`。
 
 该小节还包含 `Use LLM Reviewer`、`LLM Config Path` 和 `LLM Reviewer Status`。`Use LLM Reviewer` 默认关闭；勾选后只增强 ReviewerAgent，并把 `LLM Config Path` 作为路径参数传给 LangGraph workflow。Gradio 不读取或展示 LLM config 文件内容。状态框展示 `llm_reviewer_enabled`、`llm_used`、`fallback_used`、`model`、`guard_passed` 和 `fallback_reason`。本地 LLM 不直接生成 SNP/InDel/KASP/CAPS 结论；输出仍经过 output_guard 和 FinalQAAgent，不通过会 fallback 到规则版 ReviewerAgent。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph。
+
+同一 Tab 还包含 `Lobster-style External Omics Agent Benchmark` 小节。默认读取 `outputs/flavonoid_marker_from_package/evidence`、`outputs/genomics_variant_calling`、`outputs/flavonoid_marker_langgraph_llm_real`，输出到 `outputs/lobster_external_agent_benchmark`。点击 `Run Lobster-style Benchmark` 会调用已有 benchmark workflow；点击 `Refresh Lobster Benchmark Results` 只读取已有结果。页面展示 `lobster_style_agent_report.md`、`comparison_matrix.tsv`、`lobster_vs_internal_comparison.md`、`benchmark_manifest.json`，并显示 `backend_name=lobster_ai_reference`、`backend_mode=mock_reference`、`real_lobster_run=false`。当前不是 Lobster AI 真实运行结果，只是 Lobster-style reference benchmark，用于对照外部多组学 Agent 风格输出和内部育种业务 Agent 输出，不替代 LangGraph 主流程。
 
 Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 分析逻辑。当前 candidate variant calling 和 LangGraph workflow 结果不能替代 WGS/GBS 群体变异检测；KASP/CAPS 表仍是 preliminary screening，不是最终引物或酶切方案。`data/private/` 和 `outputs/` 不应提交 Git。
 

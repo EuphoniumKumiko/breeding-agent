@@ -119,7 +119,40 @@ outputs/lobster_external_agent_benchmark/
     └── benchmark_manifest.json
 ```
 
-## 7. 对比维度
+## 7. Gradio 展示
+
+当前 `谷子黄酮候选标记推荐` Tab 已新增：
+
+```text
+Lobster-style External Omics Agent Benchmark
+```
+
+输入：
+
+- `Evidence Dir`：默认 `outputs/flavonoid_marker_from_package/evidence`
+- `Variant Calling Dir`：默认 `outputs/genomics_variant_calling`
+- `Internal Agent Outdir`：默认 `outputs/flavonoid_marker_langgraph_llm_real`
+- `Lobster Benchmark Outdir`：默认 `outputs/lobster_external_agent_benchmark`
+
+按钮：
+
+- `Run Lobster-style Benchmark`
+- `Refresh Lobster Benchmark Results`
+
+页面展示：
+
+- benchmark status
+- `backend_name`
+- `backend_mode`
+- `real_lobster_run=false`
+- `lobster_style_agent_report.md`
+- `comparison_matrix.tsv`
+- `lobster_vs_internal_comparison.md`
+- `benchmark_manifest.json`
+
+Refresh 按钮只读取已有输出，不重新运行 benchmark。页面说明必须保留当前不是 Lobster AI 真实运行结果、只是 Lobster-style reference benchmark、不替代 LangGraph 主流程。
+
+## 8. 对比维度
 
 `comparison_matrix.tsv` 至少覆盖：
 
@@ -136,7 +169,7 @@ outputs/lobster_external_agent_benchmark/
 - 是否面向作物育种标记推荐
 - 是否保留 evidence traceability
 
-## 8. 当前自定义 Agent 的优势
+## 9. 当前自定义 Agent 的优势
 
 相对于通用 Lobster-style 多组学解释范式，当前内部 Agent 更贴近本项目业务：
 
@@ -151,7 +184,7 @@ outputs/lobster_external_agent_benchmark/
 | FinalQAAgent | 已保留规则化终检 |
 | Gradio 展示 | 已能展示普通推荐、LangGraph、LLM Reviewer 状态 |
 
-## 9. 后续升级路线
+## 10. 后续升级路线
 
 后续规划可以分三步：
 

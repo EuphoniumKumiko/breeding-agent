@@ -33,6 +33,11 @@ from breeding_agent.workflows.genomics_variant_calling import (
     GenomicsVariantCallingConfig,
     run_genomics_variant_calling_task,
 )
+from breeding_agent.workflows.lobster_external_agent_benchmark import (
+    DEFAULT_LOBSTER_BENCHMARK_OUTDIR,
+    LobsterExternalAgentBenchmarkConfig,
+    run_lobster_external_agent_benchmark_task,
+)
 from breeding_agent.workflows.metabolomics_evidence import (
     MetabolomicsEvidenceConfig,
     run_metabolomics_evidence_task,
@@ -56,6 +61,8 @@ FLAVONOID_DEFAULT_EVIDENCE_DIR = "outputs/flavonoid_marker_from_package/evidence
 FLAVONOID_DEFAULT_OUTDIR = "outputs/flavonoid_marker_from_package"
 FLAVONOID_LANGGRAPH_DEFAULT_OUTDIR = DEFAULT_LANGGRAPH_OUTDIR
 FLAVONOID_LLM_CONFIG_DEFAULT = "configs/llm.local.yaml"
+FLAVONOID_INTERNAL_AGENT_DEFAULT_OUTDIR = "outputs/flavonoid_marker_langgraph_llm_real"
+FLAVONOID_LOBSTER_BENCHMARK_DEFAULT_OUTDIR = DEFAULT_LOBSTER_BENCHMARK_OUTDIR
 METABOLOMICS_DEFAULT_OUTDIR = "outputs/gradio_metabolomics_run"
 GENOMICS_DEFAULT_OUTDIR = "outputs/gradio_genomics_run"
 GENOMICS_VARIANT_DEFAULT_DATASET_DIR = FLAVONOID_DEFAULT_DATASET_DIR
@@ -544,6 +551,64 @@ def refresh_langgraph_outputs(
     )
 
 
+def run_lobster_benchmark_ui(
+    evidence_dir: str,
+    variant_calling_dir: str,
+    internal_agent_outdir: str,
+    outdir: str,
+) -> tuple[str, str, str, list[list[str]], str, str]:
+    warning_lines = []
+    outdir_path = Path(outdir).expanduser()
+    variant_dir = _optional_existing_dir(variant_calling_dir)
+    if variant_calling_dir and variant_dir is None:
+        warning_lines.append(
+            "variant_calling_dir 不存在或留空，Lobster-style benchmark 将不接入 variant evidence: "
+            f"{variant_calling_dir}"
+        )
+    internal_outdir_path = Path(internal_agent_outdir).expanduser()
+    if not internal_outdir_path.exists():
+        warning_lines.append(
+            "internal_agent_outdir 不存在，comparison 中内部 LangGraph 输出维度可能显示 false: "
+            f"{internal_agent_outdir}"
+        )
+    try:
+        result = run_lobster_external_agent_benchmark_task(
+            LobsterExternalAgentBenchmarkConfig(
+                evidence_dir=Path(evidence_dir).expanduser(),
+                variant_calling_dir=variant_dir,
+                internal_agent_outdir=internal_outdir_path,
+                outdir=outdir_path,
+            )
+        )
+        outputs = result.get("outputs", {})
+        status = "Lobster-style benchmark 运行成功。"
+        if isinstance(outputs, dict):
+            status += (
+                f"\nlobster_style_agent_report: {outputs.get('lobster_style_agent_report')}"
+                f"\ncomparison_matrix: {outputs.get('comparison_matrix')}"
+                f"\nlobster_vs_internal_comparison: {outputs.get('lobster_vs_internal_comparison')}"
+            )
+    except Exception as exc:
+        status = f"Lobster-style benchmark 运行失败: {exc}"
+        warning_lines.append(traceback.format_exc())
+
+    return load_lobster_benchmark_outputs(
+        outdir=outdir_path,
+        status=status,
+        warning_lines=warning_lines,
+    )
+
+
+def refresh_lobster_benchmark_outputs(
+    outdir: str,
+) -> tuple[str, str, str, list[list[str]], str, str]:
+    return load_lobster_benchmark_outputs(
+        outdir=Path(outdir).expanduser(),
+        status="已刷新 Lobster-style benchmark 输出文件。",
+        warning_lines=[],
+    )
+
+
 def build_app() -> gr.Blocks:
     with gr.Blocks(title="Agri Multi-omics Breeding Agent Demo") as demo:
         gr.Markdown("# Agri Multi-omics Breeding Agent Demo")
@@ -1019,6 +1084,65 @@ def build_app() -> gr.Blocks:
                 langgraph_qa_json = gr.Textbox(label="qa_check.json", lines=18)
                 langgraph_manifest_json = gr.Textbox(label="manifest.json", lines=18)
 
+            gr.Markdown("## Lobster-style External Omics Agent Benchmark")
+            gr.Markdown(
+                "当前不是 Lobster AI 真实运行结果，而是 Lobster-style reference benchmark "
+                "/ mock_reference。它用于对比开源多组学 Agent 风格输出和本项目内部育种业务 "
+                "Agent 输出，不替代当前 LangGraph 主流程，也不安装或调用 Lobster。"
+            )
+            with gr.Row():
+                with gr.Column():
+                    lobster_evidence_dir = gr.Textbox(
+                        label="Evidence Dir",
+                        value=FLAVONOID_DEFAULT_EVIDENCE_DIR,
+                    )
+                    lobster_variant_calling_dir = gr.Textbox(
+                        label="Variant Calling Dir",
+                        value=GENOMICS_VARIANT_DEFAULT_OUTDIR,
+                    )
+                    lobster_internal_agent_outdir = gr.Textbox(
+                        label="Internal Agent Outdir",
+                        value=FLAVONOID_INTERNAL_AGENT_DEFAULT_OUTDIR,
+                    )
+                    lobster_benchmark_outdir = gr.Textbox(
+                        label="Lobster Benchmark Outdir",
+                        value=FLAVONOID_LOBSTER_BENCHMARK_DEFAULT_OUTDIR,
+                    )
+                    with gr.Row():
+                        run_lobster_benchmark_button = gr.Button(
+                            "Run Lobster-style Benchmark",
+                            variant="primary",
+                        )
+                        refresh_lobster_benchmark_button = gr.Button(
+                            "Refresh Lobster Benchmark Results"
+                        )
+                with gr.Column():
+                    lobster_benchmark_status = gr.Textbox(
+                        label="benchmark status",
+                        lines=8,
+                    )
+                    lobster_backend_metadata = gr.Textbox(
+                        label="backend_name / backend_mode / real_lobster_run",
+                        lines=6,
+                    )
+
+            gr.Markdown("### lobster_style_agent_report.md")
+            lobster_style_report = gr.Markdown()
+            gr.Markdown("### comparison_matrix.tsv")
+            lobster_comparison_matrix = gr.DataFrame(
+                label="comparison_matrix.tsv",
+                headers=None,
+                datatype="str",
+                interactive=False,
+                wrap=True,
+            )
+            gr.Markdown("### lobster_vs_internal_comparison.md")
+            lobster_vs_internal_comparison = gr.Markdown()
+            lobster_benchmark_manifest = gr.Textbox(
+                label="benchmark_manifest.json",
+                lines=18,
+            )
+
         flavonoid_button_inputs = [
             flavonoid_dataset_dir,
             flavonoid_evidence_dir,
@@ -1086,6 +1210,29 @@ def build_app() -> gr.Blocks:
             fn=refresh_langgraph_outputs,
             inputs=[langgraph_outdir],
             outputs=langgraph_outputs,
+        )
+        lobster_outputs = [
+            lobster_benchmark_status,
+            lobster_backend_metadata,
+            lobster_style_report,
+            lobster_comparison_matrix,
+            lobster_vs_internal_comparison,
+            lobster_benchmark_manifest,
+        ]
+        run_lobster_benchmark_button.click(
+            fn=run_lobster_benchmark_ui,
+            inputs=[
+                lobster_evidence_dir,
+                lobster_variant_calling_dir,
+                lobster_internal_agent_outdir,
+                lobster_benchmark_outdir,
+            ],
+            outputs=lobster_outputs,
+        )
+        refresh_lobster_benchmark_button.click(
+            fn=refresh_lobster_benchmark_outputs,
+            inputs=[lobster_benchmark_outdir],
+            outputs=lobster_outputs,
         )
 
     return demo
@@ -1296,6 +1443,66 @@ def load_langgraph_outputs(
         _read_json_text(qa_path),
         _read_json_text(manifest_path),
     )
+
+
+def load_lobster_benchmark_outputs(
+    *,
+    outdir: Path,
+    status: str,
+    warning_lines: list[str],
+) -> tuple[str, str, str, list[list[str]], str, str]:
+    reference_dir = outdir / "lobster_reference"
+    comparison_dir = outdir / "comparison"
+    report_path = reference_dir / "lobster_style_agent_report.md"
+    matrix_path = comparison_dir / "comparison_matrix.tsv"
+    comparison_path = comparison_dir / "lobster_vs_internal_comparison.md"
+    manifest_path = outdir / "logs" / "benchmark_manifest.json"
+
+    required_outputs = [
+        report_path,
+        matrix_path,
+        comparison_path,
+        manifest_path,
+    ]
+    missing_outputs = [path for path in required_outputs if not path.exists()]
+    if missing_outputs:
+        warning_lines.append(
+            "尚未生成 Lobster-style benchmark 结果，请先点击 Run Lobster-style Benchmark。"
+        )
+        warning_lines.extend(f"Missing output: {path}" for path in missing_outputs)
+
+    if warning_lines:
+        status = status + "\n\nWarnings:\n" + "\n".join(warning_lines)
+
+    return (
+        status,
+        _format_lobster_backend_metadata(manifest_path),
+        read_text_file(report_path),
+        read_tsv_for_display(matrix_path),
+        read_text_file(comparison_path),
+        _read_json_text(manifest_path),
+    )
+
+
+def _format_lobster_backend_metadata(manifest_path: Path) -> str:
+    manifest = _read_json_object(manifest_path)
+    if not isinstance(manifest, dict):
+        return (
+            "backend_name: unknown\n"
+            "backend_mode: unknown\n"
+            "real_lobster_run: unknown\n"
+            f"manifest: {manifest_path}"
+        )
+    ordered_keys = [
+        "reference_project_name",
+        "reference_project_url",
+        "backend_name",
+        "backend_mode",
+        "real_lobster_run",
+    ]
+    lines = [f"{key}: {manifest.get(key, '')}" for key in ordered_keys]
+    lines.append("Note: current result is Lobster-style reference benchmark, not a real Lobster AI run.")
+    return "\n".join(lines)
 
 
 def _format_llm_reviewer_status(

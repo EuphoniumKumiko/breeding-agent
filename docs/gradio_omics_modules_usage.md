@@ -1,5 +1,8 @@
 # Gradio 多组学模块使用说明
 
+适用读者：需要运行 Gradio 工作台、理解各 omics Tab 和后端 workflow 对应关系的同学。  
+阅读目标：明确每个 Tab 的输入输出、当前能力边界和本地 LLM Reviewer 展示方式。
+
 本文档以当前 `src/breeding_agent/web/gradio_app.py` 的实际代码为准。当前 Gradio 页面使用顶部 `gr.Tab` 布局，页面标题为：
 
 ```text
@@ -292,13 +295,16 @@ outputs/gradio_demo_run
 
 ## 谷子黄酮候选标记推荐
 
-该 Tab 用于生成 flavonoid marker evidence、运行 aggregation、查看候选表、报告、QA 和 manifest。当前也可展示并触发 LangGraph 多智能体聚合流程：
+该 Tab 用于生成 flavonoid marker evidence、运行 aggregation、查看候选表、报告、QA 和 manifest。当前也可展示并触发 LangGraph 多智能体聚合流程，以及 Lobster-style 外部多组学 Agent 对照 benchmark：
 
 - `Run LangGraph Workflow`：调用现有 LangGraph workflow；勾选 `Use LLM Reviewer` 时只为 ReviewerAgent 启用本地 OpenAI-compatible 审阅增强。
 - `Refresh LangGraph Results`：只读取 `outputs/flavonoid_marker_langgraph` 下已有输出。
 - 页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、`graph/graph_trace.json`、`graph/graph_state_final.json`、最终报告、QA、manifest 和 LLM Reviewer 状态。
+- `Run Lobster-style Benchmark`：调用现有 Lobster-style reference benchmark workflow，比较外部多组学 Agent 风格输出和内部育种业务 Agent 输出。
+- `Refresh Lobster Benchmark Results`：只读取 `outputs/lobster_external_agent_benchmark` 下已有输出。
+- 页面展示 `lobster_style_agent_report.md`、`comparison_matrix.tsv`、`lobster_vs_internal_comparison.md` 和 `benchmark_manifest.json`，并显示 `backend_name=lobster_ai_reference`、`backend_mode=mock_reference`、`real_lobster_run=false`。
 
-LangGraph 默认只编排现有规则化 agents；本地 LLM 只可选增强 ReviewerAgent，不直接生成 SNP/InDel/KASP/CAPS 结论。输出仍经过 output_guard 和 FinalQAAgent；不通过会 fallback 到规则版 ReviewerAgent。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph。详细说明见：
+LangGraph 默认只编排现有规则化 agents；本地 LLM 只可选增强 ReviewerAgent，不直接生成 SNP/InDel/KASP/CAPS 结论。输出仍经过 output_guard 和 FinalQAAgent；不通过会 fallback 到规则版 ReviewerAgent。Lobster-style benchmark 不是 Lobster AI 真实运行结果，不安装或调用 Lobster，也不替代 LangGraph 主流程。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph。详细说明见：
 
 ```text
 docs/gradio_flavonoid_marker_usage.md
