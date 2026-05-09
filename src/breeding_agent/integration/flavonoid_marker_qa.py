@@ -58,6 +58,8 @@ def check_flavonoid_marker_report(report_text: str) -> dict[str, object]:
         missing_items.append("missing DOI value")
     if not has_marker_types:
         missing_items.append("missing marker type recommendation")
+    optional_variant_checks = _optional_variant_evidence_checks(report_text)
+    missing_items.extend(optional_variant_checks)
 
     passed = (
         all(gene_check.values())
@@ -66,6 +68,7 @@ def check_flavonoid_marker_report(report_text: str) -> dict[str, object]:
         and has_literature_review
         and has_doi
         and has_marker_types
+        and not optional_variant_checks
     )
 
     return {
@@ -76,6 +79,7 @@ def check_flavonoid_marker_report(report_text: str) -> dict[str, object]:
         "has_literature_review": has_literature_review,
         "has_doi": has_doi,
         "has_marker_types": has_marker_types,
+        "optional_variant_checks": optional_variant_checks,
         "passed": passed,
         "missing_items": missing_items,
     }
@@ -99,3 +103,18 @@ def _gene_has_statistics(report_text: str, gene_id: str) -> bool:
         if len(NUMBER_RE.findall(line)) >= 4:
             return True
     return False
+
+
+def _optional_variant_evidence_checks(report_text: str) -> list[str]:
+    missing = []
+    if "LowQual" in report_text and not (
+        "不应直接优先" in report_text or "不应优先" in report_text
+    ):
+        missing.append("missing LowQual non-prioritization statement")
+    if "preliminary" in report_text and ("KASP" in report_text or "CAPS" in report_text):
+        if not ("不是最终标记" in report_text or "不是最终引物" in report_text):
+            missing.append("missing preliminary KASP/CAPS limitation statement")
+    if "variant calling" in report_text or "候选区域变异 calling" in report_text:
+        if not ("不能替代 WGS/GBS" in report_text or "不能替代 WGS" in report_text):
+            missing.append("missing WGS/GBS limitation statement")
+    return missing

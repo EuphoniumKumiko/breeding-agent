@@ -30,6 +30,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help=f"Output directory. Default: {DEFAULT_OUTDIR}",
     )
+    parser.add_argument(
+        "--variant-calling-dir",
+        default=None,
+        type=Path,
+        help=(
+            "Optional genomics variant calling output directory. Example: "
+            "outputs/genomics_variant_calling"
+        ),
+    )
     return parser
 
 
@@ -38,7 +47,23 @@ def main(argv: list[str] | None = None) -> int:
     config = FlavonoidMarkerAggregationConfig(
         evidence_dir=args.evidence_dir.expanduser(),
         outdir=args.outdir.expanduser(),
+        variant_calling_dir=(
+            args.variant_calling_dir.expanduser()
+            if args.variant_calling_dir
+            else None
+        ),
     )
+    if config.variant_calling_dir:
+        print(
+            "[flavonoid-markers] variant-calling-dir: "
+            f"{config.variant_calling_dir}",
+            flush=True,
+        )
+    else:
+        print(
+            "[flavonoid-markers] variant-calling-dir: not provided",
+            flush=True,
+        )
 
     try:
         report_file = run_flavonoid_marker_aggregation_task(config)

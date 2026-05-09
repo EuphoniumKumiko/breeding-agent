@@ -1,5 +1,8 @@
 # 谷子黄酮标记 mini 数据包导入说明
 
+适用读者：需要从学长 mini 数据包生成 flavonoid marker evidence 的同学。  
+阅读目标：理解数据包文件、evidence 转换输出和不伪造 DOI / SNP/InDel 的边界。
+
 ## 数据包是什么
 
 学长提供的 `flavonoid_marker_mini_5genes_50kb` 是一个谷子黄酮标记 mini 数据和预处理结果包。它用于演示如何把转录组、代谢组、注释和候选变异相关输入整理成 flavonoid marker aggregation 可以读取的 evidence 文件。
@@ -105,14 +108,14 @@ BAM 文件中的参考序列名称必须和后续调用使用的参考 FASTA / �
 
 如果 BAM、FASTA 和 GFF 的染色体名称或坐标系统不一致，变异检测、候选区域筛选和 marker 转化都会产生错误定位。因此后续做 SNP/InDel calling 时，应明确使用与 BAM 兼容的参考序列，并用原始坐标 GFF 做基因和区域解释。
 
-## 为什么第一版不伪造 SNP/InDel 位点
+## 为什么 package evidence 不伪造 SNP/InDel 位点
 
-当前 mini 数据包没有提供最终 SNP/InDel call 结果表，也没有提供已经筛选好的 KASP/CAPS marker 位点。为了保持 workflow 可复现，第一版 `genome_variant_evidence.tsv` 对每个目标基因写入：
+当前 mini 数据包本身没有提供最终 SNP/InDel call 结果表，也没有提供已经筛选好的 KASP/CAPS marker 位点。为了保持 workflow 可复现，package evidence 转换生成的 `genome_variant_evidence.tsv` 对每个目标基因写入：
 
 ```text
 variant_status = not_called
 ```
 
-并说明后续应基于 BAM、`genome.bam_compatible.fa.gz` 和 `genome.original_coords.gff` 进行候选区域 SNP/InDel calling，再筛选可转化 marker。
+后续已经有独立的 Genomics Candidate Variant Calling MVP，可基于 BAM、`genome.bam_compatible.fa.gz` 和 `genome.original_coords.gff` 生成 `candidate_variants.tsv`、KASP preliminary screening 和 CAPS screening 表，并通过 `--variant-calling-dir outputs/genomics_variant_calling` 可选接入黄酮推荐报告。
 
-这样做可以避免把未验证的位点写成正式 marker evidence，也能让报告清楚区分“已有多组学候选证据”和“尚未完成变异位点 calling”。
+这样做可以避免把 package evidence 中不存在的位点写成正式 marker evidence，也能让报告清楚区分“已有多组学候选证据”和“已通过独立 candidate variant calling 接入的真实候选位点”。即使接入 variant calling，KASP/CAPS 表仍是 preliminary screening，不是最终实验方案。

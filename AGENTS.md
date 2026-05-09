@@ -1,12 +1,18 @@
 # AGENTS.md
 
-This repository is the `breeding-agent` project for reproducible crop multi-omics breeding workflows. The current production-quality module is a mini RNA-seq DEG workflow. The next domain task is foxtail millet flavonoid marker recommendation from a local mini data package.
+适用读者：Codex、后续接手开发的同学、并行开发 Agent / workflow / Gradio 的协作者。  
+阅读目标：明确当前项目状态、硬性业务要求、禁止改动范围、LLM Reviewer 边界和提交前检查规则。
+
+This repository is the `breeding-agent` project for reproducible crop multi-omics breeding workflows. It now includes RNA-seq DEG reproduction, foxtail millet flavonoid marker recommendation, Genomics Candidate Variant Calling MVP, variant evidence integration, LLM-ready rule agents, a LangGraph workflow, a Deep Agents POC, Gradio display pages, and a Promoter Design scaffold.
 
 ## Project Scope
 
 - Research crop: 谷子。
-- Existing workflow: RNA-seq DEG reproduction and first-version transcriptomics evidence integration.
-- New flavonoid marker task: 根据转录组、代谢组、基因组和功能注释数据，给出可开发标记类型建议，例如 SNP/InDel/KASP/CAPS，并说明还需要哪些验证。
+- Existing bioinformatics workflows: RNA-seq DEG reproduction, transcriptomics/metabolomics/annotation/literature evidence aggregation, Genomics Candidate Variant Calling MVP, and optional variant evidence integration.
+- Implemented flavonoid marker task: 根据转录组、代谢组、基因组、功能注释、文献和可选 variant calling evidence，给出可开发标记类型建议，例如 SNP/InDel/KASP/CAPS，并说明还需要哪些验证。
+- Agent orchestration: LLM-ready rule agents are available; LangGraph is the main open-source workflow orchestration path; Deep Agents is a parallel POC. Current default runs do not call LLMs or external APIs.
+- Local LLM Reviewer: implemented for LangGraph `ReviewerAgent` only through an OpenAI-compatible local backend. It passes `chat_template_kwargs.enable_thinking=false`, uses output guard and FinalQAAgent, and must fallback to rule-based ReviewerAgent when model output fails.
+- Promoter Design: scaffold only. It defines task schema, data inventory, placeholder workflow/CLI outputs, and validation boundaries; it does not train a promoter model or generate real promoter sequences.
 - Required biological conclusion text for flavonoid marker reports and onboarding docs: 优先围绕 Si9g04210.1、Si5g31340.1、Si9g34380.1 开发候选 SNP/InDel/KASP 标记，再用更大群体的基因型和黄酮含量数据验证关联。
 
 ## Hard Business Requirements
@@ -22,6 +28,9 @@ This repository is the `breeding-agent` project for reproducible crop multi-omic
 - 文献查阅 is required for flavonoid marker recommendations. Relevant literature must show DOI values.
 - Do not fabricate DOI values. Use only DOI values present in verified inputs, manually checked literature, or explicitly provided seed evidence.
 - Do not fabricate SNP/InDel positions. If formal variant calling results are missing, write `variant_status=not_called`.
+- Do not fabricate promoter sequences. Promoter Design scaffold outputs must not be described as validated or directly usable synthetic promoters.
+- KASP/CAPS tables are preliminary screening, not final primer or enzyme digestion plans.
+- Candidate-region variant calling does not replace WGS/GBS population variant calling.
 
 Current seed literature DOI values in the package-derived evidence are:
 
@@ -56,6 +65,12 @@ These values are package-derived evidence, not final breeding validation.
 - Flavonoid marker aggregator: `src/breeding_agent/integration/flavonoid_marker_aggregator.py`
 - Flavonoid marker QA: `src/breeding_agent/integration/flavonoid_marker_qa.py`
 - Flavonoid marker report: `src/breeding_agent/reports/flavonoid_marker_report.py`
+- Genomics variant calling CLI: `src/breeding_agent/cli/genomics_variants.py`
+- Genomics variant calling workflow: `src/breeding_agent/workflows/genomics_variant_calling.py`
+- LLM-ready agent interface: `src/breeding_agent/agents/base.py`
+- LangGraph flavonoid workflow CLI: `src/breeding_agent/cli/flavonoid_markers_graph.py`
+- Deep Agents POC CLI: `src/breeding_agent/cli/flavonoid_markers_deepagents.py`
+- Promoter Design scaffold CLI: `src/breeding_agent/cli/promoter_design.py`
 - Flavonoid package import doc: `docs/flavonoid_marker_package_import.md`
 
 ## Do Not Modify Without Explicit Request
@@ -64,6 +79,11 @@ These values are package-derived evidence, not final breeding validation.
 - Do not modify `workflows/rnaseq_deg/R/differential_expression_limma_voom.R` unless the task explicitly asks for R workflow changes.
 - Do not change `featureCounts -g Parent` behavior unless the annotation strategy is explicitly changed.
 - Do not weaken validation, provenance, or reproducibility behavior.
+- Do not modify Genomics Variant Calling core calling commands unless explicitly requested.
+- Do not modify Metabolomics workflow behavior unless explicitly requested.
+- Do not modify Promoter Design scaffold into a real generator unless explicitly requested.
+- Do not modify Gradio layout in broad refactors; keep current top-level `gr.Tab` structure unless the task explicitly asks otherwise.
+- Do not commit or stage `configs/llm.local.yaml`.
 
 ## Where To Add Flavonoid Marker Work
 
@@ -77,6 +97,38 @@ Prefer these areas:
 - `docs/`
 
 Do not put flavonoid marker aggregation logic inside the RNA-seq DEG workflow.
+
+## Multi-agent Parallel Development Rules
+
+- Prefer one feature branch per Agent or workflow slice.
+- Keep Agent business logic in `src/breeding_agent/agents/`.
+- Keep orchestration logic in `src/breeding_agent/graphs/` or `src/breeding_agent/workflows/`.
+- Keep LLM transport / guard logic in `src/breeding_agent/llm/`.
+- Keep Gradio as display and workflow trigger only; do not move core evidence, QA, or marker logic into `web/gradio_app.py`.
+- New Agent work should define or reuse `AgentInput` / `AgentOutput`, update `context_builder`, add LangGraph trace fields, add tests, and update docs.
+- `FinalQAAgent` should remain deterministic and rule-based.
+
+## Local LLM Reviewer Boundary
+
+Current implementation:
+
+- Only LangGraph `reviewer_agent_node` may call the local OpenAI-compatible LLM.
+- The local model is used for reviewer note enhancement only.
+- It must not directly generate SNP/InDel/KASP/CAPS conclusions.
+- It must not fabricate DOI values or variant coordinates.
+- It must preserve LowQual, preliminary KASP/CAPS, and WGS/GBS limitation statements.
+- Model output must pass `output_guard` and then `FinalQAAgent`.
+- Failure, timeout, empty content, disabled config, or guard failure must fallback to the rule-based ReviewerAgent.
+- Gradio may show `llm_reviewer_enabled`, `llm_used`, `fallback_used`, `model`, `guard_passed`, and `fallback_reason`, but must not show local config file contents.
+
+## Promoter Design Boundary
+
+Promoter Design is currently scaffold only:
+
+- It may define task schema, data inventory, placeholder outputs, and validation plan.
+- It must not train GAN / diffusion / DNA language models in the current scaffold.
+- It must not generate or claim validated synthetic promoter sequences.
+- It must not be described as a ready-to-use promoter design model.
 
 ## Data And Git Safety
 
@@ -118,6 +170,56 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
   --outdir outputs/flavonoid_marker_from_package
 ```
 
+Run with optional variant evidence:
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_from_package \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+Run the LangGraph workflow:
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+Run LangGraph with local LLM Reviewer:
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_llm_real \
+  --variant-calling-dir outputs/genomics_variant_calling \
+  --use-llm-reviewer \
+  --llm-config configs/llm.local.yaml
+```
+
+Run the Deep Agents POC:
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_deepagents \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_deepagents \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+Run the Promoter Design scaffold:
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.promoter_design \
+  --gene-id Si9g04210.1 \
+  --gene-sequence ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC \
+  --gene-function "flavonoid-related candidate gene" \
+  --species foxtail_millet \
+  --target-expression-level high \
+  --outdir outputs/promoter_design_demo
+```
+
 Expected aggregation outputs:
 
 ```text
@@ -137,12 +239,16 @@ Check the QA result:
 cat outputs/flavonoid_marker_from_package/logs/qa_check.json
 ```
 
-Current flavonoid marker aggregation limits:
+Current flavonoid marker and design limits:
 
-- It is a rule-based/template workflow; it does not call external APIs, Deep Agents, or LangGraph.
+- The old flavonoid CLI is a rule-based/template workflow. It does not call external APIs or real LLMs.
+- LangGraph is implemented as a parallel main orchestration workflow for existing rule agents.
+- Deep Agents is implemented as a parallel POC and does not replace LangGraph.
 - It reads DOI values from `literature_evidence.tsv` and must not fabricate DOI values.
 - If `genome_variant_evidence.tsv` has `variant_status=not_called`, the report must state that the mini package does not provide final SNP/InDel positions.
 - Do not fabricate SNP/InDel positions. Recommend follow-up candidate-region SNP/InDel calling from BAM plus `genome.fa/genome.gff` or `genome.bam_compatible.fa.gz` with `genome.original_coords.gff`, then screen KASP/CAPS-convertible loci.
+- PASS variants may be prioritized for downstream review; LowQual variants are retained for traceability and should not be directly prioritized.
+- Promoter Design is currently a scaffold and must not output fabricated or validated promoter sequences.
 
 ## Required Checks After Codex Changes
 
@@ -155,3 +261,16 @@ python3 -m py_compile <changed_python_files>
 ```
 
 If only Markdown files changed, state that `py_compile` is not applicable because no Python files changed.
+
+For release-style changes, also consult:
+
+```text
+docs/developer/testing_and_release_checklist.md
+```
+
+Before staging, verify:
+
+```bash
+git status --short --untracked-files=all
+git diff -- src/breeding_agent/workflows/rnaseq_deg.py workflows/rnaseq_deg/R/differential_expression_limma_voom.R
+```

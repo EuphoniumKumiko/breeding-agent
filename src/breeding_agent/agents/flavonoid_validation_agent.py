@@ -2,11 +2,29 @@
 
 from __future__ import annotations
 
+from breeding_agent.agents.base import AgentOutput, LLMReadyAgentMixin, RuleBasedAgent
+from breeding_agent.agents.prompt_templates import validation_agent_prompt
 
-class FlavonoidValidationAgent:
+
+class FlavonoidValidationAgent(LLMReadyAgentMixin, RuleBasedAgent):
     """Create a validation plan for flavonoid marker candidates."""
 
+    agent_name = "validation_agent"
+    prompt_template = validation_agent_prompt
+
     def run(self, candidate_rows: list[dict[str, str]]) -> dict[str, object]:
+        result = self._run_rule(candidate_rows)
+        return {
+            **result,
+            "agent_output": self._agent_output(result).to_dict(),
+        }
+
+    def run_with_context(self, context: dict[str, object]) -> AgentOutput:
+        candidate_rows = _as_rows(context.get("candidate_rows", []))
+        result = self._run_rule(candidate_rows)
+        return self._agent_output(result)
+
+    def _run_rule(self, candidate_rows: list[dict[str, str]]) -> dict[str, object]:
         target_genes = [
             row.get("gene_id", "unknown")
             for row in candidate_rows
@@ -16,6 +34,21 @@ class FlavonoidValidationAgent:
             "validation_plan_text": self._render_validation_plan(target_genes),
             "target_genes": target_genes,
         }
+
+    def _agent_output(self, result: dict[str, object]) -> AgentOutput:
+        target_genes = result.get("target_genes", [])
+        n_genes = len(target_genes) if isinstance(target_genes, list) else 0
+        return AgentOutput(
+            agent_name=self.agent_name,
+            summary=f"Generated validation plan for {n_genes} genes.",
+            evidence_used=["candidate gene list", "marker recommendations"],
+            warnings=[],
+            limitations=[
+                "Validation plan is a recommended workflow, not completed breeding validation.",
+                "Population association remains required.",
+            ],
+            structured_payload=result,
+        )
 
     def _render_validation_plan(self, target_genes: list[str]) -> str:
         gene_text = "、".join(target_genes) if target_genes else "候选基因"
@@ -30,3 +63,9 @@ class FlavonoidValidationAgent:
                 "- 使用 LC-MS/MS 复核关键黄酮代谢物含量，连接基因型、表达和代谢表型。",
             ]
         )
+
+
+def _as_rows(value: object) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    return [row for row in value if isinstance(row, dict)]

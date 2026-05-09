@@ -1,10 +1,13 @@
 # Gradio Demo 使用说明
 
+适用读者：需要启动 Gradio demo 或向他人演示页面功能的同学。  
+阅读目标：理解当前 gr.Tab 页面、每个 Tab 的能力边界和 LangGraph/LLM Reviewer 展示位置。
+
 ## Demo 目标
 
-Agri RNA-seq DEG Agent Demo 是一个面向 RNA-seq 差异表达复现的小型 Web Demo。
+当前 Gradio 页面是 `Agri Multi-omics Breeding Agent Demo`，使用顶部 `gr.Tab` 结构，不是旧版单一 RNA-seq 页面。它既保留 RNA-seq DEG 复现入口，也展示 Metabolomics、Genomics / GWAS、Integration & Recommendation 和谷子黄酮候选标记推荐相关结果。
 
-它展示的核心流程是：
+其中 RNA-seq DEG Tab 展示的核心流程是：
 
 1. 用户输入服务器本地专业数据路径。
 2. 系统调用 `featureCounts` 和 R 差异分析脚本。
@@ -19,7 +22,7 @@ flowchart LR
     D --> E[生成显著基因表]
     E --> F[生成 report.md]
     E --> G[写入 manifest.json 和 logs/run.log]
-    F --> H[Gradio 页面展示结果]
+    F --> H[Gradio Transcriptomics DEG Tab 展示结果]
     G --> H
 ```
 
@@ -65,7 +68,7 @@ cd ~/projects/breeding-agent
 
 ```bash
 micromamba activate rnaseq_deg
-PYTHONPATH=src python -m breeding_agent.web.gradio_app
+PYTHONPATH=src python3 -m breeding_agent.web.gradio_app
 ```
 
 服务配置为：
@@ -95,9 +98,21 @@ http://<debian-vm-ip>:7860
 http://192.168.x.x:7860
 ```
 
-## 页面输入项
+## 当前 Tab
 
-- `bam_dir`: BAM 文件所在目录。第一版只支持服务器本地路径，不支持上传大型 BAM 文件。
+当前页面包含：
+
+1. `Transcriptomics DEG Module`
+2. `Metabolomics Module`
+3. `Genomics / GWAS Module`
+4. `Integration & Recommendation`
+5. `谷子黄酮候选标记推荐`
+
+Gradio 是展示层和本地 workflow 触发入口，不改变后端业务逻辑。LangGraph workflow 已接入黄酮 Tab 展示，并可显示本地 LLM Reviewer 状态；Deep Agents POC 当前是并行 CLI/workflow，未接入 Gradio；Promoter Design scaffold 当前也未接入 Gradio。
+
+## Transcriptomics DEG 页面输入项
+
+- `BAM directory`: BAM 文件所在目录。只支持服务器本地路径，不支持上传大型 BAM 文件。
 - `gff`: GFF/GFF3 注释文件路径。
 - `contrast`: 差异分析对比，默认 `JM-LM`。
 - `prefix`: 输出文件前缀，默认 `JM_vs_LM.mini`。
@@ -121,6 +136,8 @@ outdir = outputs/gradio_demo_run
 - `Run DEG Analysis`: 调用项目中已有 workflow 执行完整 RNA-seq DEG 流程。
 
 Web Demo 不复制业务逻辑，实际分析由 Python workflow 统一入口执行，CLI 和 Gradio 共用同一套流程。
+
+谷子黄酮候选标记推荐 Tab 还可以运行或刷新 LangGraph workflow 输出，展示 `langgraph_summary.md`、`node_decision_table.tsv`、`graph_trace.json`、最终报告和 QA 结果。当前没有真实 LLM 推理。
 
 ## 页面输出
 
@@ -180,4 +197,4 @@ Si9g04210.1 在 LM 组显著高表达。
 - 运行前确认 `featureCounts` 和 `Rscript` 在当前环境 PATH 中。
 - 如果运行失败，优先查看页面中的 `status`、`manifest.json` 和 `run.log`。
 - 如果从宿主机无法访问页面，检查虚拟机 IP、网络模式和 7860 端口是否可访问。
-
+- KASP/CAPS 表只是 preliminary screening，不是最终实验方案；candidate-region variant calling 不能替代 WGS/GBS 群体变异检测。

@@ -4,19 +4,40 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from breeding_agent.agents.base import AgentOutput, LLMReadyAgentMixin, RuleBasedAgent
+from breeding_agent.agents.prompt_templates import literature_agent_prompt
 from breeding_agent.integration.flavonoid_marker_aggregator import (
     read_literature_evidence,
 )
 
 
-class FlavonoidLiteratureAgent:
+class FlavonoidLiteratureAgent(LLMReadyAgentMixin, RuleBasedAgent):
     """Read seed literature evidence without fabricating DOI values."""
+
+    agent_name = "literature_agent"
+    prompt_template = literature_agent_prompt
 
     def __init__(self, evidence_dir: Path) -> None:
         self.evidence_dir = evidence_dir
 
     def run(self) -> dict[str, object]:
         literature_rows = read_literature_evidence(self.evidence_dir)
+        result = self._run_rule(literature_rows)
+        agent_output = self._agent_output(result)
+        return {
+            **result,
+            "agent_output": agent_output.to_dict(),
+        }
+
+    def run_with_context(self, context: dict[str, object]) -> AgentOutput:
+        literature_rows = _as_rows(context.get("literature_evidence", []))
+        result = self._run_rule(literature_rows)
+        return self._agent_output(result)
+
+    def _run_rule(
+        self,
+        literature_rows: list[dict[str, str]],
+    ) -> dict[str, object]:
         warnings = []
         if not literature_rows:
             warnings.append(
@@ -40,6 +61,21 @@ class FlavonoidLiteratureAgent:
             ),
             "warnings": warnings,
         }
+
+    def _agent_output(self, result: dict[str, object]) -> AgentOutput:
+        literature_rows = _as_rows(result.get("literature_rows", []))
+        warnings = [str(warning) for warning in result.get("warnings", [])]
+        return AgentOutput(
+            agent_name=self.agent_name,
+            summary=f"Read {len(literature_rows)} literature evidence rows.",
+            evidence_used=["literature_evidence.tsv"],
+            warnings=warnings,
+            limitations=[
+                "Only DOI values present in evidence are displayed.",
+                "No external literature API is called.",
+            ],
+            structured_payload=result,
+        )
 
     def _render_literature_review(
         self,
@@ -76,3 +112,9 @@ def _cell(row: dict[str, str], key: str) -> str:
     if value is None or value == "":
         return "NA"
     return str(value).replace("\n", " ").replace("|", "\\|")
+
+
+def _as_rows(value: object) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    return [row for row in value if isinstance(row, dict)]

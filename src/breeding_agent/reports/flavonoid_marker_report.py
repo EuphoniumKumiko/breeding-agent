@@ -30,6 +30,7 @@ def generate_flavonoid_marker_report(
     validation_plan_text: str | None = None,
     reviewer_notes: str | None = None,
     qa_result: dict[str, object] | None = None,
+    variant_calling_dir: Path | None = None,
 ) -> Path:
     """Generate a Chinese-facing flavonoid marker recommendation report."""
 
@@ -47,6 +48,7 @@ def generate_flavonoid_marker_report(
             validation_plan_text=validation_plan_text,
             reviewer_notes=reviewer_notes,
             qa_result=qa_result,
+            variant_calling_dir=variant_calling_dir,
         ),
         encoding="utf-8",
     )
@@ -78,6 +80,7 @@ def render_flavonoid_marker_report(
     validation_plan_text: str | None = None,
     reviewer_notes: str | None = None,
     qa_result: dict[str, object] | None = None,
+    variant_calling_dir: Path | None = None,
 ) -> str:
     """Render the report body."""
 
@@ -128,6 +131,17 @@ def render_flavonoid_marker_report(
 
     if has_not_called:
         lines.extend(["", NOT_CALLED_VARIANT_NOTE])
+    if variant_calling_dir is not None:
+        lines.extend(
+            [
+                "",
+                "## 候选区域变异 calling 证据",
+                _variant_calling_evidence_section(
+                    rows=ordered_rows,
+                    variant_calling_dir=variant_calling_dir,
+                ),
+            ]
+        )
 
     lines.extend(
         [
@@ -225,6 +239,76 @@ def _variant_table(rows: list[dict[str, str]]) -> str:
             )
         )
     return "\n".join(lines)
+
+
+def _variant_calling_evidence_section(
+    *,
+    rows: list[dict[str, str]],
+    variant_calling_dir: Path,
+) -> str:
+    lines = [
+        f"- Variant calling 输出目录: `{variant_calling_dir}`",
+        "- 当前 variant calling 来自 mini 数据包和现有 BAM；如果 BAM 是 RNA-seq BAM，结果受表达区域、reads 覆盖、剪接比对和等位基因表达偏倚影响。",
+        "- 该结果不能替代 WGS/GBS 群体变异检测。",
+        "- PASS 位点可优先进入后续标记开发复核。",
+        "- LowQual 位点仅作为可追溯候选记录保留，不应直接优先用于 KASP/CAPS 开发。",
+        "- KASP/CAPS 表只是 preliminary screening，不是最终引物或酶切方案。",
+        "- 后续仍需更大群体基因型和黄酮含量关联验证。",
+        "",
+        "| gene_id | variant_evidence_status | total | PASS | LowQual | SNP | InDel | PASS SNP | LowQual SNP | KASP preliminary_pass | KASP LowQual review | CAPS PASS screening | CAPS LowQual review | 解释 |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+    ]
+    for row in rows:
+        lines.append(
+            "| {gene_id} | {variant_evidence_status} | {total_variants} | "
+            "{pass_variants} | {lowqual_variants} | {snp_count} | {indel_count} | "
+            "{pass_snp_count} | {lowqual_snp_count} | "
+            "{kasp_preliminary_pass_count} | "
+            "{kasp_low_quality_review_required_count} | "
+            "{caps_pass_variant_requires_enzyme_screening_count} | "
+            "{caps_low_quality_variant_requires_review_count} | {explanation} |".format(
+                gene_id=_cell(row, "gene_id"),
+                variant_evidence_status=_cell(row, "variant_evidence_status"),
+                total_variants=_cell(row, "total_variants"),
+                pass_variants=_cell(row, "pass_variants"),
+                lowqual_variants=_cell(row, "lowqual_variants"),
+                snp_count=_cell(row, "snp_count"),
+                indel_count=_cell(row, "indel_count"),
+                pass_snp_count=_cell(row, "pass_snp_count"),
+                lowqual_snp_count=_cell(row, "lowqual_snp_count"),
+                kasp_preliminary_pass_count=_cell(
+                    row,
+                    "kasp_preliminary_pass_count",
+                ),
+                kasp_low_quality_review_required_count=_cell(
+                    row,
+                    "kasp_low_quality_review_required_count",
+                ),
+                caps_pass_variant_requires_enzyme_screening_count=_cell(
+                    row,
+                    "caps_pass_variant_requires_enzyme_screening_count",
+                ),
+                caps_low_quality_variant_requires_review_count=_cell(
+                    row,
+                    "caps_low_quality_variant_requires_review_count",
+                ),
+                explanation=_variant_evidence_explanation(row),
+            )
+        )
+    return "\n".join(lines)
+
+
+def _variant_evidence_explanation(row: dict[str, str]) -> str:
+    status = row.get("variant_evidence_status", "")
+    if status == "preliminary_pass_variants_detected":
+        return "已有真实 VCF PASS variant，可优先复核 PASS SNP 的 KASP 转化潜力。"
+    if status == "only_low_quality_variants_detected":
+        return "仅检出 LowQual variant，不应优先用于 KASP/CAPS，需要人工复核质量。"
+    if status == "no_called_variant_in_current_mini_calling":
+        return "当前 mini calling 未检出 called variant，不能写成已有候选位点。"
+    if status == "variant_calling_output_missing":
+        return "未读取到 variant calling 输出，保持原有 not_called 解释。"
+    return "未接入可选 variant calling evidence。"
 
 
 def _annotation_table(rows: list[dict[str, str]]) -> str:

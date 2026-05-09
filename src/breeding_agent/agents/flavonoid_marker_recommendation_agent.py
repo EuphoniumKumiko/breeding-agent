@@ -2,11 +2,29 @@
 
 from __future__ import annotations
 
+from breeding_agent.agents.base import AgentOutput, LLMReadyAgentMixin, RuleBasedAgent
+from breeding_agent.agents.prompt_templates import marker_recommendation_agent_prompt
 
-class FlavonoidMarkerRecommendationAgent:
+
+class FlavonoidMarkerRecommendationAgent(LLMReadyAgentMixin, RuleBasedAgent):
     """Recommend marker types from candidate evidence and variant status."""
 
+    agent_name = "marker_recommendation_agent"
+    prompt_template = marker_recommendation_agent_prompt
+
     def run(self, candidate_rows: list[dict[str, str]]) -> dict[str, object]:
+        result = self._run_rule(candidate_rows)
+        return {
+            **result,
+            "agent_output": self._agent_output(candidate_rows, result).to_dict(),
+        }
+
+    def run_with_context(self, context: dict[str, object]) -> AgentOutput:
+        candidate_rows = _as_rows(context.get("candidate_rows", []))
+        result = self._run_rule(candidate_rows)
+        return self._agent_output(candidate_rows, result)
+
+    def _run_rule(self, candidate_rows: list[dict[str, str]]) -> dict[str, object]:
         recommendations_by_gene = {
             row.get("gene_id", "unknown"): self._recommend_for_gene(row)
             for row in candidate_rows
@@ -19,7 +37,54 @@ class FlavonoidMarkerRecommendationAgent:
             ),
         }
 
+    def _agent_output(
+        self,
+        candidate_rows: list[dict[str, str]],
+        result: dict[str, object],
+    ) -> AgentOutput:
+        return AgentOutput(
+            agent_name=self.agent_name,
+            summary=f"Generated marker recommendations for {len(candidate_rows)} genes.",
+            evidence_used=[
+                "flavonoid_marker_candidates.tsv",
+                "genome_variant_evidence.tsv",
+                "optional candidate variant calling evidence",
+            ],
+            warnings=[],
+            limitations=[
+                "No SNP/InDel positions are fabricated.",
+                "LowQual variants are not prioritized.",
+                "KASP/CAPS preliminary screening is not final marker design.",
+                "Candidate-region variant calling does not replace WGS/GBS population calling.",
+            ],
+            structured_payload=result,
+        )
+
     def _recommend_for_gene(self, row: dict[str, str]) -> str:
+        variant_evidence_status = row.get("variant_evidence_status", "")
+        if variant_evidence_status == "preliminary_pass_variants_detected":
+            return (
+                "该基因候选区域已有真实 VCF PASS variant；可优先复核 PASS SNP "
+                "的 KASP 转化潜力。KASP/CAPS 结果只是 preliminary screening，"
+                "不是最终标记或酶切方案，仍需 flanking sequence、覆盖度和群体"
+                "验证。"
+            )
+        if variant_evidence_status == "only_low_quality_variants_detected":
+            return (
+                "该基因候选区域仅检出 LowQual variant，不应优先用于 KASP/CAPS，"
+                "需要先人工复核 coverage、quality 和 flanking sequence。"
+            )
+        if variant_evidence_status == "no_called_variant_in_current_mini_calling":
+            return (
+                "当前 mini calling 未检出 called variant，不能写成已有候选位点；"
+                "建议扩大候选区域、增加样本或使用 WGS/GBS 数据继续检测。"
+            )
+        if variant_evidence_status == "variant_calling_output_missing":
+            return (
+                "未读取到 variant calling 输出，沿用 variant_status 结论；不能"
+                "补写 SNP/InDel 坐标，需先运行候选区域 variant calling。"
+            )
+
         variant_status = row.get("variant_status", "not_called")
         if variant_status == "not_called":
             return (
@@ -61,3 +126,9 @@ class FlavonoidMarkerRecommendationAgent:
                 )
             )
         return "\n".join(lines)
+
+
+def _as_rows(value: object) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    return [row for row in value if isinstance(row, dict)]
