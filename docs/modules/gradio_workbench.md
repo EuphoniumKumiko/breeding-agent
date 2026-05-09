@@ -199,6 +199,8 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 - `outdir`
 - `variant_calling_dir`
 - `langgraph_outdir`
+- `Use LLM Reviewer`
+- `LLM Config Path`
 
 按钮：
 
@@ -219,6 +221,7 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 - `候选区域变异 calling 证据`
 - `qa_check.json`
 - `manifest.json`
+- `LLM Reviewer Status`
 - `LangGraph Summary`
 - `Node Decision Table`
 - `Final Report`
@@ -226,7 +229,9 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 
 `variant_calling_dir` 可选，默认 `outputs/genomics_variant_calling`。留空或目录不存在时保持原有黄酮推荐流程；目录存在时读取 `candidate_variants.tsv`、`kasp_candidate_sites.tsv` 和 `caps_candidate_sites.tsv`，并在报告中展示三个固定基因的 `variant_evidence_status`、PASS/LowQual、SNP/InDel、KASP preliminary screening 和 CAPS screening 统计。LowQual 不应直接优先用于 KASP/CAPS 开发，KASP/CAPS 表不是最终引物或酶切方案。
 
-`langgraph_outdir` 默认 `outputs/flavonoid_marker_langgraph`。`Run LangGraph Workflow` 调用现有 LangGraph workflow；`Refresh LangGraph Results` 只读取已有 graph 输出。LangGraph 只编排现有规则化 agents，不调用真实 LLM。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型接入是下一阶段。
+`langgraph_outdir` 默认 `outputs/flavonoid_marker_langgraph`。`Run LangGraph Workflow` 调用现有 LangGraph workflow；`Refresh LangGraph Results` 只读取已有 graph 输出。`Use LLM Reviewer` 默认关闭；勾选后只增强 ReviewerAgent，并使用 `LLM Config Path` 指向的本地 OpenAI-compatible 配置。页面不读取或展示配置文件内容，只显示路径和运行状态。
+
+LLM Reviewer 状态从 `graph_trace.json`、`graph_state_final.json` 或 manifest 中读取，展示 `llm_reviewer_enabled`、`llm_used`、`fallback_used`、`model`、`guard_passed` 和 `fallback_reason`。本地 LLM 不直接生成 SNP/InDel/KASP/CAPS 结论；输出仍经过 output_guard 和 FinalQAAgent，不通过会 fallback 到规则版 ReviewerAgent。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph。
 
 ## 7. 普通启动命令
 

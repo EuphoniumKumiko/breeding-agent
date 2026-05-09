@@ -612,7 +612,9 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 
 `谷子黄酮候选标记推荐` Tab 支持生成 evidence、运行标记推荐、一键运行完整流程和刷新已有结果，并展示 `flavonoid_marker_candidates.tsv`、`flavonoid_marker_report.md`、`qa_check.json` 和 `manifest.json`。该 Tab 新增可选 `variant_calling_dir`，默认 `outputs/genomics_variant_calling`；目录存在时接入 candidate variant calling evidence，留空或目录不存在时保持原流程。页面只接受服务器本地路径，不上传 BAM/FASTA 大文件。
 
-同一 Tab 还包含 `LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）` 小节。默认 `langgraph_outdir=outputs/flavonoid_marker_langgraph`。点击 `Run LangGraph Workflow` 会调用已有 LangGraph workflow；点击 `Refresh LangGraph Results` 只读取已有 graph 输出。页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、最终报告，以及 Details 中的 `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`。LangGraph 当前只编排现有规则化 agents，不调用真实大模型。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型接入是下一阶段。
+同一 Tab 还包含 `LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）` 小节。默认 `langgraph_outdir=outputs/flavonoid_marker_langgraph`。点击 `Run LangGraph Workflow` 会调用已有 LangGraph workflow；点击 `Refresh LangGraph Results` 只读取已有 graph 输出。页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、最终报告，以及 Details 中的 `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`。
+
+该小节还包含 `Use LLM Reviewer`、`LLM Config Path` 和 `LLM Reviewer Status`。`Use LLM Reviewer` 默认关闭；勾选后只增强 ReviewerAgent，并把 `LLM Config Path` 作为路径参数传给 LangGraph workflow。Gradio 不读取或展示 LLM config 文件内容。状态框展示 `llm_reviewer_enabled`、`llm_used`、`fallback_used`、`model`、`guard_passed` 和 `fallback_reason`。本地 LLM 不直接生成 SNP/InDel/KASP/CAPS 结论；输出仍经过 output_guard 和 FinalQAAgent，不通过会 fallback 到规则版 ReviewerAgent。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph。
 
 Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 分析逻辑。当前 candidate variant calling 和 LangGraph workflow 结果不能替代 WGS/GBS 群体变异检测；KASP/CAPS 表仍是 preliminary screening，不是最终引物或酶切方案。`data/private/` 和 `outputs/` 不应提交 Git。
 

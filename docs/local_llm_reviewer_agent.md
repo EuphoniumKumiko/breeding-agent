@@ -40,7 +40,17 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
 
 不传 `--use-llm-reviewer` 时，LangGraph workflow 仍按规则化 agents 运行。
 
-## 4. 安全边界
+## 4. Gradio 展示
+
+Gradio 的 `谷子黄酮候选标记推荐` Tab 中，`LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）` 小节已新增：
+
+- `Use LLM Reviewer`
+- `LLM Config Path`
+- `LLM Reviewer Status`
+
+`Use LLM Reviewer` 默认关闭。关闭时不调用本地模型；开启时 Gradio 只把配置路径传给 LangGraph workflow，不读取或展示配置文件内容。`Refresh LangGraph Results` 会从已有 `graph_trace.json`、`graph_state_final.json` 或 manifest 中读取 LLM Reviewer 状态。
+
+## 5. 安全边界
 
 LLM 只做审阅增强，不直接生成 SNP/InDel/KASP/CAPS 结论。`output_guard` 会检查：
 
@@ -52,7 +62,7 @@ LLM 只做审阅增强，不直接生成 SNP/InDel/KASP/CAPS 结论。`output_gu
 
 如果 LLM 请求失败、返回空内容或 guard 不通过，会 fallback 到规则版 `ReviewerAgent`。
 
-## 5. Trace 字段
+## 6. Trace 字段
 
 LangGraph 的 `graph_trace.json`、`node_decision_table.tsv` 和 `langgraph_summary.md` 会在 reviewer node 中记录：
 
@@ -65,7 +75,7 @@ LangGraph 的 `graph_trace.json`、`node_decision_table.tsv` 和 `langgraph_summ
 
 这些字段用于确认是否实际使用本地模型，以及是否触发规则 fallback。
 
-## 6. 当前限制
+## 7. 当前限制
 
 - 只增强 `reviewer_agent_node`。
 - 不改变 aggregation、variant evidence、marker recommendation 或 QA 业务逻辑。

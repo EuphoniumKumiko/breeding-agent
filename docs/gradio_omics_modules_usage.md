@@ -294,11 +294,11 @@ outputs/gradio_demo_run
 
 该 Tab 用于生成 flavonoid marker evidence、运行 aggregation、查看候选表、报告、QA 和 manifest。当前也可展示并触发 LangGraph 多智能体聚合流程：
 
-- `Run LangGraph Workflow`：调用现有 LangGraph workflow。
+- `Run LangGraph Workflow`：调用现有 LangGraph workflow；勾选 `Use LLM Reviewer` 时只为 ReviewerAgent 启用本地 OpenAI-compatible 审阅增强。
 - `Refresh LangGraph Results`：只读取 `outputs/flavonoid_marker_langgraph` 下已有输出。
-- 页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、`graph/graph_trace.json`、`graph/graph_state_final.json`、最终报告、QA 和 manifest。
+- 页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、`graph/graph_trace.json`、`graph/graph_state_final.json`、最终报告、QA、manifest 和 LLM Reviewer 状态。
 
-LangGraph 当前只编排现有规则化 agents，不调用真实 LLM。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型仍是下一阶段规划。详细说明见：
+LangGraph 默认只编排现有规则化 agents；本地 LLM 只可选增强 ReviewerAgent，不直接生成 SNP/InDel/KASP/CAPS 结论。输出仍经过 output_guard 和 FinalQAAgent；不通过会 fallback 到规则版 ReviewerAgent。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph。详细说明见：
 
 ```text
 docs/gradio_flavonoid_marker_usage.md

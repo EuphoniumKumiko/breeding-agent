@@ -58,7 +58,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 
 ## 输入框
 
-`谷子黄酮候选标记推荐` Tab 当前有五个输入框：
+`谷子黄酮候选标记推荐` Tab 当前有 LangGraph 相关输入：
 
 ```text
 dataset_dir
@@ -66,6 +66,8 @@ evidence_dir
 outdir
 variant_calling_dir
 langgraph_outdir
+Use LLM Reviewer
+LLM Config Path
 ```
 
 默认值：
@@ -76,6 +78,8 @@ evidence_dir = outputs/flavonoid_marker_from_package/evidence
 outdir = outputs/flavonoid_marker_from_package
 variant_calling_dir = outputs/genomics_variant_calling
 langgraph_outdir = outputs/flavonoid_marker_langgraph
+Use LLM Reviewer = false
+LLM Config Path = configs/llm.local.yaml
 ```
 
 含义：
@@ -85,6 +89,8 @@ langgraph_outdir = outputs/flavonoid_marker_langgraph
 - `outdir`：flavonoid marker aggregation 输出目录。
 - `variant_calling_dir`：可选 Genomics Candidate Variant Calling MVP 输出目录。留空或目录不存在时保持原有黄酮推荐流程，不失败；目录存在时读取 variant evidence 并接入报告。
 - `langgraph_outdir`：LangGraph workflow 输出目录，用于展示 graph trace、节点决策表、summary、最终报告、QA 和 manifest。
+- `Use LLM Reviewer`：只控制 LangGraph workflow 的 ReviewerAgent 本地 LLM 审阅增强。未勾选时保持原行为，不调用 LLM。
+- `LLM Config Path`：本地 OpenAI-compatible LLM 配置路径。页面只传递和显示路径，不读取或展示配置内容。
 
 ## 按钮
 
@@ -163,6 +169,15 @@ src/breeding_agent/workflows/flavonoid_marker_langgraph.py
 
 它复用 `evidence_dir`、`variant_calling_dir` 和 `langgraph_outdir`，运行已实现的 LangGraph 多智能体编排 workflow。Gradio 不重复实现 LangGraph 节点逻辑。
 
+如果勾选 `Use LLM Reviewer`，Gradio 会调用 LangGraph workflow 时传入：
+
+```text
+use_llm_reviewer=True
+llm_config=configs/llm.local.yaml
+```
+
+该本地 LLM 只增强 `ReviewerAgent`，不直接生成 SNP/InDel/KASP/CAPS 结论。输出仍经过 `output_guard` 和 `FinalQAAgent`；请求失败、空内容或 guard 不通过时会 fallback 到规则版 ReviewerAgent。
+
 如果 LangGraph 未安装，页面会显示：
 
 ```text
@@ -175,6 +190,12 @@ LangGraph is not installed. Install with: pip install langgraph
 
 ```text
 尚未生成 LangGraph workflow 结果，请先点击 Run LangGraph Workflow。
+```
+
+刷新时会从已有 `graph_trace.json`、`graph_state_final.json` 或 `manifest.json` 中读取 LLM Reviewer 状态。若没有 LLM 字段，显示：
+
+```text
+LLM Reviewer not enabled / 未启用本地大模型审阅
 ```
 
 ## 页面输出
@@ -191,10 +212,20 @@ LangGraph is not installed. Install with: pip install langgraph
 - `manifest.json`
 - LangGraph Run Status
 - LangGraph QA Status
+- LLM Reviewer Status
 - LangGraph Summary
 - Node Decision Table
 - LangGraph Final Report
 - Details: `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`
+
+`LLM Reviewer Status` 展示：
+
+- `llm_reviewer_enabled`
+- `llm_used`
+- `fallback_used`
+- `model`
+- `guard_passed`
+- `fallback_reason`
 
 对应文件通常位于：
 

@@ -55,6 +55,7 @@ FLAVONOID_DEFAULT_DATASET_DIR = "data/private/flavonoid_marker_mini_5genes_50kb"
 FLAVONOID_DEFAULT_EVIDENCE_DIR = "outputs/flavonoid_marker_from_package/evidence"
 FLAVONOID_DEFAULT_OUTDIR = "outputs/flavonoid_marker_from_package"
 FLAVONOID_LANGGRAPH_DEFAULT_OUTDIR = DEFAULT_LANGGRAPH_OUTDIR
+FLAVONOID_LLM_CONFIG_DEFAULT = "configs/llm.local.yaml"
 METABOLOMICS_DEFAULT_OUTDIR = "outputs/gradio_metabolomics_run"
 GENOMICS_DEFAULT_OUTDIR = "outputs/gradio_genomics_run"
 GENOMICS_VARIANT_DEFAULT_DATASET_DIR = FLAVONOID_DEFAULT_DATASET_DIR
@@ -481,7 +482,9 @@ def run_langgraph_workflow_ui(
     evidence_dir: str,
     outdir: str,
     variant_calling_dir: str,
-) -> tuple[str, str, str, list[list[str]], str, str, str, str, str]:
+    use_llm_reviewer: bool,
+    llm_config_path: str,
+) -> tuple[str, str, str, str, list[list[str]], str, str, str, str, str]:
     warning_lines = []
     outdir_path = Path(outdir).expanduser()
     variant_dir = _optional_existing_dir(variant_calling_dir)
@@ -496,10 +499,18 @@ def run_langgraph_workflow_ui(
                 evidence_dir=Path(evidence_dir).expanduser(),
                 outdir=outdir_path,
                 variant_calling_dir=variant_dir,
+                use_llm_reviewer=bool(use_llm_reviewer),
+                llm_config=(
+                    Path(llm_config_path).expanduser()
+                    if use_llm_reviewer and llm_config_path
+                    else None
+                ),
             )
         )
         outputs = result.get("outputs", {})
         status = "LangGraph workflow 运行成功。"
+        if use_llm_reviewer:
+            status += f"\nLLM Reviewer requested with config path: {llm_config_path}"
         if isinstance(outputs, dict):
             status += (
                 f"\ngraph_trace: {outputs.get('graph_trace')}"
@@ -525,7 +536,7 @@ def run_langgraph_workflow_ui(
 
 def refresh_langgraph_outputs(
     outdir: str,
-) -> tuple[str, str, str, list[list[str]], str, str, str, str, str]:
+) -> tuple[str, str, str, str, list[list[str]], str, str, str, str, str]:
     return load_langgraph_outputs(
         outdir=Path(outdir).expanduser(),
         status="已刷新 LangGraph workflow 输出文件。",
@@ -938,19 +949,29 @@ def build_app() -> gr.Blocks:
 
             gr.Markdown("## LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）")
             gr.Markdown(
-                "当前 LangGraph workflow 使用现有规则化 agents，不调用真实大模型。"
+                "当前 LangGraph workflow 默认使用现有规则化 agents；勾选本地 LLM Reviewer "
+                "时，仅增强 ReviewerAgent。"
                 "LangGraph 用于编排 LiteratureAgent、MarkerRecommendationAgent、"
                 "ValidationAgent、ReviewerAgent、FinalQAAgent。\n\n"
                 "`graph_trace.json` 和 `node_decision_table.tsv` 用于追踪每个节点的"
-                "输入、输出、证据、警告和限制。后续可以在该 graph node 基础上接入"
-                "本地开源大模型或 Deep Agents。当前结果仍不能替代 WGS/GBS 群体变异检测；"
-                "KASP/CAPS 表仍是 preliminary screening，不是最终引物或酶切方案。"
+                "输入、输出、证据、警告和限制。本地 LLM 只做审阅增强，不直接生成 "
+                "SNP/InDel/KASP/CAPS 结论；输出仍经过 output_guard 和 FinalQAAgent，"
+                "不通过会 fallback 到规则版 ReviewerAgent。当前结果仍不能替代 WGS/GBS "
+                "群体变异检测；KASP/CAPS 表仍是 preliminary screening，不是最终引物或酶切方案。"
             )
             with gr.Row():
                 with gr.Column():
                     langgraph_outdir = gr.Textbox(
                         label="langgraph_outdir",
                         value=FLAVONOID_LANGGRAPH_DEFAULT_OUTDIR,
+                    )
+                    langgraph_use_llm_reviewer = gr.Checkbox(
+                        label="Use LLM Reviewer",
+                        value=False,
+                    )
+                    langgraph_llm_config_path = gr.Textbox(
+                        label="LLM Config Path",
+                        value=FLAVONOID_LLM_CONFIG_DEFAULT,
                     )
                     with gr.Row():
                         run_langgraph_button = gr.Button(
@@ -968,6 +989,10 @@ def build_app() -> gr.Blocks:
                     langgraph_qa_status = gr.Textbox(
                         label="LangGraph QA Status（QA 状态）",
                         lines=2,
+                    )
+                    langgraph_llm_status = gr.Textbox(
+                        label="LLM Reviewer Status",
+                        lines=7,
                     )
 
             gr.Markdown("### LangGraph Summary（LangGraph 摘要）")
@@ -1037,6 +1062,7 @@ def build_app() -> gr.Blocks:
         langgraph_outputs = [
             langgraph_status,
             langgraph_qa_status,
+            langgraph_llm_status,
             langgraph_summary,
             langgraph_node_decision_table,
             langgraph_graph_trace,
@@ -1051,6 +1077,8 @@ def build_app() -> gr.Blocks:
                 flavonoid_evidence_dir,
                 langgraph_outdir,
                 flavonoid_variant_calling_dir,
+                langgraph_use_llm_reviewer,
+                langgraph_llm_config_path,
             ],
             outputs=langgraph_outputs,
         )
@@ -1223,7 +1251,7 @@ def load_langgraph_outputs(
     outdir: Path,
     status: str,
     warning_lines: list[str],
-) -> tuple[str, str, str, list[list[str]], str, str, str, str, str]:
+) -> tuple[str, str, str, str, list[list[str]], str, str, str, str, str]:
     graph_dir = outdir / "graph"
     summary_path = graph_dir / "langgraph_summary.md"
     decision_path = graph_dir / "node_decision_table.tsv"
@@ -1255,6 +1283,11 @@ def load_langgraph_outputs(
     return (
         status,
         _flavonoid_qa_status(qa_path),
+        _format_llm_reviewer_status(
+            trace_path=trace_path,
+            state_path=state_path,
+            manifest_path=manifest_path,
+        ),
         read_text_file(summary_path),
         read_tsv_for_display(decision_path),
         _read_json_text(trace_path),
@@ -1263,6 +1296,94 @@ def load_langgraph_outputs(
         _read_json_text(qa_path),
         _read_json_text(manifest_path),
     )
+
+
+def _format_llm_reviewer_status(
+    *,
+    trace_path: Path,
+    state_path: Path,
+    manifest_path: Path,
+) -> str:
+    metadata = _load_llm_reviewer_metadata(
+        trace_path=trace_path,
+        state_path=state_path,
+        manifest_path=manifest_path,
+    )
+    if not metadata or not bool(metadata.get("llm_reviewer_enabled", False)):
+        return "LLM Reviewer not enabled / 未启用本地大模型审阅"
+    ordered_keys = [
+        "llm_reviewer_enabled",
+        "llm_used",
+        "fallback_used",
+        "model",
+        "guard_passed",
+        "fallback_reason",
+    ]
+    lines = [
+        "LLM Reviewer enabled / 已启用本地大模型审阅",
+        "Only ReviewerAgent is enhanced; SNP/InDel/KASP/CAPS conclusions are not generated by LLM.",
+    ]
+    lines.extend(f"{key}: {metadata.get(key, '')}" for key in ordered_keys)
+    return "\n".join(lines)
+
+
+def _load_llm_reviewer_metadata(
+    *,
+    trace_path: Path,
+    state_path: Path,
+    manifest_path: Path,
+) -> dict[str, object]:
+    trace = _read_json_object(trace_path)
+    if isinstance(trace, list):
+        for row in trace:
+            if isinstance(row, dict) and row.get("node_name") == "reviewer_agent_node":
+                metadata = _llm_metadata_from_mapping(row)
+                if metadata:
+                    return metadata
+
+    state = _read_json_object(state_path)
+    if isinstance(state, dict):
+        metadata = _llm_metadata_from_mapping(state.get("llm_reviewer_metadata"))
+        if metadata:
+            return metadata
+        agent_context = state.get("agent_context")
+        if isinstance(agent_context, dict):
+            metadata = _llm_metadata_from_mapping(
+                agent_context.get("_llm_reviewer_metadata")
+            )
+            if metadata:
+                return metadata
+
+    manifest = _read_json_object(manifest_path)
+    if isinstance(manifest, dict):
+        metadata = _llm_metadata_from_mapping(manifest.get("llm_reviewer"))
+        if metadata:
+            return metadata
+    return {}
+
+
+def _llm_metadata_from_mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    keys = [
+        "llm_reviewer_enabled",
+        "llm_used",
+        "fallback_used",
+        "model",
+        "guard_passed",
+        "fallback_reason",
+    ]
+    return {key: value.get(key) for key in keys if key in value}
+
+
+def _read_json_object(path: Path) -> object:
+    if not path.exists():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except Exception:
+        return None
 
 
 def summarize_variant_quality(
