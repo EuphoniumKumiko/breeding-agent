@@ -34,3 +34,5 @@ data/private/
 
 # Runtime outputs
 outputs/
+configs/llm.local.yaml
+*.pyc
