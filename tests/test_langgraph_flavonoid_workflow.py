@@ -147,9 +147,35 @@ class LangGraphFlavonoidWorkflowTest(unittest.TestCase):
             outputs = result["outputs"]
             qa_result = result["qa_result"]
 
-        self.assertTrue(Path(outputs["graph_trace"]).exists())
-        self.assertTrue(Path(outputs["langgraph_summary"]).exists())
-        self.assertIs(qa_result["passed"], True)
+            required_keys = [
+                "graph_trace",
+                "graph_state_final",
+                "node_decision_table",
+                "langgraph_summary",
+                "report",
+                "qa_check",
+                "manifest",
+            ]
+            for key in required_keys:
+                self.assertIn(key, outputs)
+                self.assertTrue(Path(outputs[key]).exists(), outputs[key])
+
+            trace_text = Path(outputs["graph_trace"]).read_text(encoding="utf-8")
+            decision_text = Path(outputs["node_decision_table"]).read_text(
+                encoding="utf-8"
+            )
+            summary_text = Path(outputs["langgraph_summary"]).read_text(
+                encoding="utf-8"
+            )
+
+            self.assertIn("load_evidence_node", trace_text)
+            self.assertIn("marker_recommendation_agent_node", trace_text)
+            self.assertIn("reviewer_agent_node", trace_text)
+            self.assertIn("final_qa_agent_node", trace_text)
+            self.assertIn("node_name", decision_text)
+            self.assertIn("marker_recommendation_agent_node", decision_text)
+            self.assertIn("LangGraph 多智能体聚合流程概览", summary_text)
+            self.assertIs(qa_result["passed"], True)
 
 
 def _existing_variant_dir() -> Path | None:
