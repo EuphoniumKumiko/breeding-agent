@@ -15,7 +15,7 @@
 重点理解：
 
 - 研究对象是谷子。
-- 当前生产质量最高的是 RNA-seq DEG workflow。
+- 当前项目已经不只是 RNA-seq DEG demo；生产主线包括 RNA-seq DEG、flavonoid marker recommendation、Genomics Candidate Variant Calling MVP、LangGraph 多智能体 workflow 和 Gradio 展示。Promoter Design 当前只是 scaffold。
 - 新增方向是谷子黄酮候选标记推荐。
 - 不能伪造 DOI。
 - 不能伪造 SNP/InDel 位点。

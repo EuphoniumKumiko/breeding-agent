@@ -2,19 +2,21 @@
 
 ## 1. 项目定位
 
-`breeding-agent` 是一个面向作物多组学育种分析的可复现项目。当前项目的研究作物是谷子，已经有一个可运行的 RNA-seq DEG workflow，并开始扩展谷子黄酮标记推荐任务。
+`breeding-agent` 是一个面向作物多组学育种分析的可复现项目。当前项目的研究作物是谷子，已经从 RNA-seq DEG workflow 扩展到黄酮候选标记推荐、候选区域 variant calling、规则化智能体聚合、LangGraph 编排、Deep Agents POC、Gradio 展示和 Promoter Design scaffold。
 
 当前核心定位：
 
 - 已实现：RNA-seq 差异表达分析、结果报告、标准 transcriptomics evidence、候选基因表和第一版 recommendation report。
 - 已实现：从学长谷子黄酮标记 mini 数据包生成 aggregation evidence 的 demo 转换脚本。
 - 已实现：flavonoid marker aggregation CLI，采用规则版 workflow + DeepRare-like lightweight agent layer，整合 transcriptome、metabolome、annotation、genome variant 和 literature evidence，给出 SNP/InDel/KASP/CAPS 等可开发标记类型建议，并输出 QA 检查结果。
-- 已实现：并行 LangGraph 版 flavonoid marker workflow，把现有规则化 agents 作为 graph nodes 编排；LangGraph 是可选依赖，不影响旧 CLI。
+- 已实现：LangGraph 版 flavonoid marker workflow，把现有规则化 agents 作为 graph nodes 编排；LangGraph 是当前主线开源智能体编排框架，也是可选依赖，不影响旧 CLI。
+- 已实现：Deep Agents POC，复用现有 evidence、context builder 和规则化 agents，输出 trace/summary/decision table；它是并行 POC，不替代 LangGraph。
+- 已实现：Promoter Design scaffold，包含任务定义、schema、数据盘点、workflow/CLI 占位输出；它不训练模型，不生成真实启动子序列。
 - 已实现：Genomics Candidate Variant Calling MVP，基于候选区域运行 `samtools`/`bcftools`，输出真实 VCF 中存在的 SNP/InDel、KASP preliminary screening 和 CAPS screening 表。
-- 已实现：Gradio `Metabolomics Module` 和 `Genomics / GWAS Module` 第一版可运行页面，读取学长数据包已有结果表，分别做代谢组 evidence analysis 和基因组 region / annotation analysis；`Genomics / GWAS Module` 也可展示 Candidate Variant Calling MVP。
-- 禁止事项：不能伪造 SNP/InDel 位点，不能伪造 DOI，不能把 `data/private/` 和 `outputs/` 中的数据加入 Git。
+- 已实现：Gradio 顶部 `gr.Tab` 工作台，包含 Transcriptomics、Metabolomics、Genomics / GWAS、Integration & Recommendation 和谷子黄酮候选标记推荐 Tab；其中 Genomics / GWAS 可展示 Candidate Variant Calling MVP，黄酮 Tab 可展示 LangGraph workflow 输出。
+- 禁止事项：不能伪造 SNP/InDel 位点，不能伪造 DOI，不能伪造启动子序列，不能把 `data/private/` 和 `outputs/` 中的数据加入 Git。
 
-当前项目根目录未发现 `README.md`，因此新人应优先阅读本文档、`AGENTS.md` 和 `docs/flavonoid_marker_package_import.md`。
+新人应优先阅读 `README.md`、本文档、`AGENTS.md` 和 `docs/flavonoid_marker_package_import.md`。
 
 ## 2. 当前已有能力
 
@@ -46,6 +48,12 @@
 - LangGraph CLI：`src/breeding_agent/cli/flavonoid_markers_graph.py`
 - LangGraph graph：`src/breeding_agent/graphs/flavonoid_marker_graph.py`
 - LangGraph trace reports：`src/breeding_agent/reports/langgraph_trace_report.py`
+- Deep Agents POC CLI：`src/breeding_agent/cli/flavonoid_markers_deepagents.py`
+- Deep Agents POC workflow：`src/breeding_agent/workflows/flavonoid_marker_deepagents.py`
+- Deep Agents POC backend：`src/breeding_agent/deepagents/flavonoid_deepagents_poc.py`
+- Promoter Design CLI：`src/breeding_agent/cli/promoter_design.py`
+- Promoter Design workflow：`src/breeding_agent/workflows/promoter_design.py`
+- Promoter Design schema：`src/breeding_agent/modules/promoter/promoter_task_schema.py`
 
 已实现的 Gradio 多组学模块：
 
@@ -417,8 +425,9 @@ outputs/flavonoid_marker_from_package/
 
 当前限制：
 
-- 默认 aggregation 是规则版/模板版 workflow + DeepRare-like lightweight agent layer，不调用 LLM，不调用外部 API，不引入 Deep Agents，也不依赖 LangGraph。
-- 并行 LangGraph workflow 只作为可选 graph 编排入口；旧 workflow 和旧 CLI 不依赖 LangGraph。
+- 默认 aggregation 是规则版/模板版 workflow + DeepRare-like lightweight agent layer，不调用 LLM，不调用外部 API，也不依赖 LangGraph 或 Deep Agents。
+- LangGraph workflow 是当前主线开源智能体编排入口；旧 workflow 和旧 CLI 不依赖 LangGraph。
+- Deep Agents POC 已完成并可作为并行入口运行，但不替代 LangGraph。
 - 文献 DOI 只来自 `literature_evidence.tsv` 或经过人工核验的输入，不伪造 DOI。
 - 当前 mini 数据包没有最终 SNP/InDel calling 结果时，报告必须保留 `variant_status=not_called`。
 - 不伪造 SNP/InDel 具体位点；后续应基于 BAM、`genome.fa/genome.gff` 或 `genome.bam_compatible.fa.gz` 与 `genome.original_coords.gff` 做候选区域 SNP/InDel calling，再筛选 KASP/CAPS 可转化位点。
@@ -445,6 +454,29 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
   --variant-calling-dir outputs/genomics_variant_calling
 ```
 
+并行 Deep Agents POC CLI：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_deepagents \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_deepagents \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+Deep Agents 输出包括：
+
+```text
+outputs/flavonoid_marker_deepagents/
+├── deepagents/
+│   ├── deepagents_trace.json
+│   ├── deepagents_summary.md
+│   └── deepagents_decision_table.tsv
+├── integration/flavonoid_marker_candidates.tsv
+├── reports/flavonoid_marker_report.md
+├── logs/qa_check.json
+└── manifest.json
+```
+
 如未安装 LangGraph，安装方式：
 
 ```bash
@@ -466,7 +498,7 @@ outputs/flavonoid_marker_langgraph/
 └── manifest.json
 ```
 
-为什么先接 LangGraph，而不是先接开源本地大模型：当前优先稳定 node/state/trace 的可复现编排边界；真实模型会引入不可复现输出、部署依赖和伪造 DOI/SNP/InDel 风险。Deep Agents 仅作为后续规划，本阶段不接入。
+为什么先接 LangGraph，而不是先接开源本地大模型：当前优先稳定 node/state/trace 的可复现编排边界；真实模型会引入不可复现输出、部署依赖和伪造 DOI/SNP/InDel 风险。Deep Agents POC 已作为并行 harness 验证入口，但本地开源大模型接入仍是下一阶段。
 
 ## 11. Genomics Candidate Variant Calling MVP
 
@@ -566,7 +598,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 
 `谷子黄酮候选标记推荐` Tab 支持生成 evidence、运行标记推荐、一键运行完整流程和刷新已有结果，并展示 `flavonoid_marker_candidates.tsv`、`flavonoid_marker_report.md`、`qa_check.json` 和 `manifest.json`。该 Tab 新增可选 `variant_calling_dir`，默认 `outputs/genomics_variant_calling`；目录存在时接入 candidate variant calling evidence，留空或目录不存在时保持原流程。页面只接受服务器本地路径，不上传 BAM/FASTA 大文件。
 
-同一 Tab 还包含 `LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）` 小节。默认 `langgraph_outdir=outputs/flavonoid_marker_langgraph`。点击 `Run LangGraph Workflow` 会调用已有 LangGraph workflow；点击 `Refresh LangGraph Results` 只读取已有 graph 输出。页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、最终报告，以及 Details 中的 `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`。LangGraph 当前只编排现有规则化 agents，不调用真实大模型；Deep Agents 和本地开源大模型只是后续规划。
+同一 Tab 还包含 `LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）` 小节。默认 `langgraph_outdir=outputs/flavonoid_marker_langgraph`。点击 `Run LangGraph Workflow` 会调用已有 LangGraph workflow；点击 `Refresh LangGraph Results` 只读取已有 graph 输出。页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、最终报告，以及 Details 中的 `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`。LangGraph 当前只编排现有规则化 agents，不调用真实大模型。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型接入是下一阶段。
 
 Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 分析逻辑。当前 candidate variant calling 和 LangGraph workflow 结果不能替代 WGS/GBS 群体变异检测；KASP/CAPS 表仍是 preliminary screening，不是最终引物或酶切方案。`data/private/` 和 `outputs/` 不应提交 Git。
 
@@ -647,3 +679,19 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 ### 文献查阅现在完成了吗？
 
 当前 evidence 中已有 seed DOI，并写入 `literature_evidence.tsv`。aggregation 报告会展示这些 DOI，并说明 workflow 不调用外部 API、不补写未核对 DOI。正式报告扩展时仍需要人工或可靠数据库核验 DOI、题名、年份和具体相关性，不能把未核验信息写成最终结论。
+
+## Promoter Design Module 后续扩展
+
+Promoter Design Module 是后续设计型任务扩展，用于承接“输入基因序列和基因功能，输出启动子序列及使用方法”的新任务。当前实现仅是 scaffold：定义输入/输出、数据盘点和占位 workflow，不训练模型、不调用真实大模型、不调用外部 API、不伪造启动子序列，也不输出可直接实验使用的 synthetic promoter。该模块不影响现有谷子黄酮候选标记推荐主线；未来可在高可信 promoter activity 数据集、motif annotation、activity predictor 和实验验证体系明确后，再作为独立 workflow 或 LangGraph / Deep Agents node 接入。
+
+运行 scaffold 示例：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.promoter_design \
+  --gene-id Si9g04210.1 \
+  --gene-sequence ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC \
+  --gene-function "flavonoid-related candidate gene" \
+  --species foxtail_millet \
+  --target-expression-level high \
+  --outdir outputs/promoter_design_demo
+```

@@ -4,7 +4,7 @@
 
 This POC validates that `breeding-agent` can expose the flavonoid marker recommendation task through a Deep Agents-style harness. It is intentionally parallel to the existing rule-based workflow and the LangGraph workflow.
 
-LangGraph remains the main graph workflow. Deep Agents is treated as a future higher-level agent harness for teacher-facing demonstrations and later experiments.
+LangGraph remains the main graph workflow. Deep Agents is implemented as a parallel POC harness for teacher-facing demonstrations and later experiments; it does not replace LangGraph.
 
 ## Current Boundary
 
@@ -88,7 +88,7 @@ The decision table intentionally shows `final_qa_agent` only once. The underlyin
 - LangGraph CLI: main graph orchestration workflow for existing rule-based agents.
 - Deep Agents CLI: optional POC harness for future framework integration.
 
-The POC is useful for showing how a future Deep Agents layer could wrap the same context and agent outputs. Later work can add a local open-source model adapter or a Deep Agents planner, but that is outside the current boundary.
+The POC shows how a Deep Agents harness can wrap the same context and agent outputs. Later work can add a local open-source model adapter or a deeper planner, but that is outside the current boundary.
 
 ## Git Safety
 

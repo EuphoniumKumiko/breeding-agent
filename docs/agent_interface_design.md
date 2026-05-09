@@ -2,7 +2,7 @@
 
 ## 1. 当前定位
 
-当前 flavonoid marker agent layer 仍是规则化实现，不调用外部 API，不接真实大模型 SDK，不引入 LangGraph 或 Deep Agents。新增的 LLM-ready interface 只把输入、输出、prompt 模板和 fallback 规则整理清楚，方便后续在明确边界下接入 OpenAI、本地模型或工作流编排工具。
+当前 flavonoid marker agent layer 仍以规则化实现为默认执行路径，不调用外部 API，不接真实大模型 SDK。LLM-ready interface 已把输入、输出、prompt 模板和 fallback 规则整理清楚，并已被 LangGraph 主线 workflow 和 Deep Agents POC 复用。真实 OpenAI / 本地开源大模型接入仍是下一阶段工作。
 
 生产路径仍然是 deterministic rule-based fallback：
 
@@ -115,11 +115,11 @@ src/breeding_agent/agents/context_builder.py
 3. adapter 失败、超时、输出缺少硬性字段或违反限制时，丢弃模型结果并使用规则版输出。
 4. 模型输出进入报告前仍必须经过 `ReviewerAgent` 和 `FinalQAAgent`。
 
-未来如果接 LangGraph，应只把现有 agent 节点化，不改变 evidence schema、报告 QA、CLI 参数或规则 fallback。当前版本不引入 LangGraph 依赖。
+LangGraph 已作为主线开源智能体编排框架接入：它只把现有 agent 节点化，不改变 evidence schema、报告 QA、CLI 参数或规则 fallback。Deep Agents 已有并行 POC，用于验证更高层 harness 接入；它不替代 LangGraph。两者当前都不调用真实 LLM。
 
 ## 8. 当前不接真实大模型的原因
 
-当前任务目标是科研可复现 workflow。真实模型调用会带来网络、权限、版本、成本和不可重复输出问题；也可能引入伪造 DOI 或伪造 SNP/InDel 位点的风险。因此本阶段只完成 interface、prompt、context 和测试，真实 LLM 接入需要单独评审。
+当前任务目标是科研可复现 workflow。真实模型调用会带来网络、权限、版本、成本和不可重复输出问题；也可能引入伪造 DOI、伪造 SNP/InDel 位点或过度解释 LowQual / preliminary screening 的风险。因此当前只完成 interface、prompt、context、LangGraph 编排和 Deep Agents POC；ReviewerAgent + Ollama/Qwen 或其他本地开源大模型 adapter 需要单独阶段接入和评审。
 
 ## 9. Fallback 意义
 

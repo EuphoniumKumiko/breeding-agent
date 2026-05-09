@@ -9,9 +9,11 @@ Flavonoid Marker Recommendation 模块用于谷子黄酮候选标记推荐。它
 - QA 检查 JSON。
 - manifest。
 
-当前默认模块是规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。它不调用 LLM，不调用外部 API，不引入 Deep Agents。
+当前默认模块是规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。它不调用 LLM，不调用外部 API。
 
-项目还新增了一个并行 LangGraph workflow，用于把现有规则 agents 作为 graph nodes 编排。LangGraph 是可选依赖；旧 workflow 和旧 CLI 不依赖 LangGraph。
+项目已新增 LangGraph workflow，用于把现有规则 agents 作为 graph nodes 编排。LangGraph 是当前主线开源智能体编排框架，也是可选依赖；旧 workflow 和旧 CLI 不依赖 LangGraph。
+
+项目还新增了 Deep Agents POC，用于验证未来更高层 agent harness 接入。Deep Agents POC 复用现有 evidence、context builder 和规则 agents，不替代 LangGraph，也不调用真实 LLM。
 
 当前还支持可选接入 Genomics Candidate Variant Calling MVP 的真实 TSV 输出。传入 `--variant-calling-dir` 后，报告会展示每个目标基因的候选区域变异 calling 证据、PASS/LowQual 质量分层和 KASP/CAPS preliminary screening 状态。不传该参数时保持旧行为。
 
@@ -70,6 +72,9 @@ Si9g34380.1
 | `src/breeding_agent/graphs/flavonoid_marker_graph.py` | LangGraph nodes and graph builder |
 | `src/breeding_agent/cli/flavonoid_markers_graph.py` | LangGraph workflow CLI |
 | `src/breeding_agent/reports/langgraph_trace_report.py` | graph trace / node decision reports |
+| `src/breeding_agent/deepagents/flavonoid_deepagents_poc.py` | Deep Agents POC trace / summary 生成 |
+| `src/breeding_agent/workflows/flavonoid_marker_deepagents.py` | Deep Agents POC workflow wrapper |
+| `src/breeding_agent/cli/flavonoid_markers_deepagents.py` | Deep Agents POC CLI |
 | `src/breeding_agent/agents/flavonoid_central_host.py` | agent 编排 |
 | `src/breeding_agent/agents/flavonoid_literature_agent.py` | 文献 evidence 读取 |
 | `src/breeding_agent/agents/flavonoid_marker_recommendation_agent.py` | 标记类型推荐 |
@@ -123,6 +128,21 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
   --evidence-dir outputs/flavonoid_marker_from_package/evidence \
   --outdir outputs/flavonoid_marker_langgraph \
   --variant-calling-dir outputs/genomics_variant_calling
+```
+
+并行 Deep Agents POC CLI：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_deepagents \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_deepagents \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+如果未安装 Deep Agents，会提示：
+
+```text
+Deep Agents is not installed. Install according to project docs.
 ```
 
 如果未安装 LangGraph，会提示：
@@ -402,9 +422,13 @@ passed=true
 
 ### 当前 LangGraph workflow 是什么？
 
-当前已经有并行 LangGraph workflow。它只把现有 agents 节点化，不改变旧 evidence schema、旧 CLI、报告 QA 和规则 fallback。它不接真实 LLM，不接本地开源大模型，也不接 Deep Agents。
+当前已经有 LangGraph workflow。它只把现有 agents 节点化，不改变旧 evidence schema、旧 CLI、报告 QA 和规则 fallback。它不接真实 LLM，不接本地开源大模型，也不把 Deep Agents 嵌入 LangGraph 主流程。
 
 LangGraph state 记录 `evidence_dir`、`outdir`、`variant_calling_dir`、`agent_context`、`agent_outputs`、`qa_result` 和 `graph_trace` 等字段。输出包括 `graph_trace.json`、`graph_state_final.json`、`node_decision_table.tsv` 和 `langgraph_summary.md`。
+
+### 当前 Deep Agents POC 是什么？
+
+Deep Agents POC 是并行演示入口，输出 `deepagents_trace.json`、`deepagents_summary.md` 和 `deepagents_decision_table.tsv`。它已经跑通，但只证明本项目可接入 Deep Agents 这类 harness；它不替代 LangGraph，不调用真实大模型，不调用外部 API。
 
 ### 为什么报告里没有具体 SNP 坐标？
 

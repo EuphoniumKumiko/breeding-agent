@@ -226,7 +226,7 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 
 `variant_calling_dir` 可选，默认 `outputs/genomics_variant_calling`。留空或目录不存在时保持原有黄酮推荐流程；目录存在时读取 `candidate_variants.tsv`、`kasp_candidate_sites.tsv` 和 `caps_candidate_sites.tsv`，并在报告中展示三个固定基因的 `variant_evidence_status`、PASS/LowQual、SNP/InDel、KASP preliminary screening 和 CAPS screening 统计。LowQual 不应直接优先用于 KASP/CAPS 开发，KASP/CAPS 表不是最终引物或酶切方案。
 
-`langgraph_outdir` 默认 `outputs/flavonoid_marker_langgraph`。`Run LangGraph Workflow` 调用现有 LangGraph workflow；`Refresh LangGraph Results` 只读取已有 graph 输出。LangGraph 只编排现有规则化 agents，不调用真实 LLM；后续 Deep Agents / 本地开源大模型只是规划。
+`langgraph_outdir` 默认 `outputs/flavonoid_marker_langgraph`。`Run LangGraph Workflow` 调用现有 LangGraph workflow；`Refresh LangGraph Results` 只读取已有 graph 输出。LangGraph 只编排现有规则化 agents，不调用真实 LLM。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型接入是下一阶段。
 
 ## 7. 普通启动命令
 

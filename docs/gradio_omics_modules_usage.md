@@ -298,7 +298,7 @@ outputs/gradio_demo_run
 - `Refresh LangGraph Results`：只读取 `outputs/flavonoid_marker_langgraph` 下已有输出。
 - 页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、`graph/graph_trace.json`、`graph/graph_state_final.json`、最终报告、QA 和 manifest。
 
-LangGraph 当前只编排现有规则化 agents，不调用真实 LLM；Deep Agents 和本地开源大模型只是后续规划。详细说明见：
+LangGraph 当前只编排现有规则化 agents，不调用真实 LLM。Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型仍是下一阶段规划。详细说明见：
 
 ```text
 docs/gradio_flavonoid_marker_usage.md

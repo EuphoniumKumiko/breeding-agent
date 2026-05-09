@@ -260,10 +260,10 @@ QA 会检查：
 ## 关键限制
 
 - 当前 Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 逻辑。
-- 默认黄酮推荐 workflow 不调用外部 API，不引入 Deep Agents、LangGraph 或大模型依赖。
-- LangGraph 展示区使用现有规则化 agents，不调用真实大模型；LangGraph 只负责编排 LiteratureAgent、MarkerRecommendationAgent、ValidationAgent、ReviewerAgent、FinalQAAgent。
+- 默认黄酮推荐 workflow 不调用外部 API、不调用真实大模型，也不依赖 LangGraph 或 Deep Agents。
+- LangGraph 展示区使用现有规则化 agents，不调用真实大模型；LangGraph 是当前主线开源智能体编排框架，只负责编排 LiteratureAgent、MarkerRecommendationAgent、ValidationAgent、ReviewerAgent、FinalQAAgent。
 - `graph_trace.json` 和 `node_decision_table.tsv` 用于追踪每个节点的输入、输出、证据、警告和限制。
-- 后续可以在 graph node 基础上接入本地开源大模型或 Deep Agents；本轮不接入。
+- Deep Agents POC 已作为并行 CLI/workflow 跑通，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型接入是下一阶段。
 - DOI 只能来自已核验的 evidence，不能伪造。
 - 当前 mini 数据包未提供最终 SNP/InDel 位点，不能伪造 SNP/InDel 坐标。
 - 如果 genome evidence 中 `variant_status=not_called`，报告必须说明后续需要候选区域 variant calling。

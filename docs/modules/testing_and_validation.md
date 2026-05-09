@@ -8,15 +8,26 @@
 
 - Flavonoid marker QA 规则。
 - Flavonoid lightweight agent layer。
+- LLM-ready Agent Interface、prompt templates 和 context builder。
+- Genomics Candidate Variant Calling MVP 与 variant evidence integration。
+- LangGraph workflow 和 optional dependency 友好提示。
+- Deep Agents POC 和 optional dependency 友好提示。
+- Promoter Design scaffold。
 - Metabolomics 和 Genomics workflow 的输出文件与缺文件行为。
 
 ## 2. 当前测试目录说明
 
 ```text
 tests/
+├── test_agent_interface.py
+├── test_deepagents_poc.py
 ├── test_flavonoid_agent_layer.py
 ├── test_flavonoid_marker_qa.py
-└── test_omics_modules.py
+├── test_flavonoid_variant_evidence.py
+├── test_genomics_variant_calling.py
+├── test_langgraph_flavonoid_workflow.py
+├── test_omics_modules.py
+└── test_promoter_design_scaffold.py
 ```
 
 ### `test_flavonoid_marker_qa.py`
@@ -48,6 +59,15 @@ tests/
 - `variant_status=not_called`。
 - 缺少部分输入时不会直接崩溃，而是返回 warning。
 
+### 其他测试
+
+- `test_agent_interface.py`：验证统一 AgentOutput、context builder 和 prompt safety constraints。
+- `test_flavonoid_variant_evidence.py`：验证 candidate variant calling evidence 按基因聚合。
+- `test_genomics_variant_calling.py`：验证 variant calling 表、质量分层和缺工具边界。
+- `test_langgraph_flavonoid_workflow.py`：验证 LangGraph state、trace reports、optional dependency 和真实 graph run 分支。
+- `test_deepagents_poc.py`：验证 Deep Agents POC trace / summary / decision table、optional dependency 和旧 CLI 不受影响。
+- `test_promoter_design_scaffold.py`：验证 Promoter Design scaffold 不生成伪造启动子序列。
+
 ## 3. 如何运行 unittest
 
 在项目根目录运行：
@@ -57,10 +77,10 @@ cd ~/projects/breeding-agent
 PYTHONPATH=src python3 -m unittest discover -s tests
 ```
 
-成功时会看到类似：
+成功时会看到 unittest 的实际测试数量和结果，例如：
 
 ```text
-Ran 16 tests
+Ran <当前测试数量> tests
 OK
 ```
 
@@ -166,6 +186,9 @@ workflows/rnaseq_deg/R/differential_expression_limma_voom.R
 - 确认没有提交 BAM、BAI、FASTA、FASTA index
 - 确认没有伪造 DOI
 - 确认没有伪造 SNP/InDel 位点
+- 确认没有伪造启动子序列
+- 确认没有把 KASP/CAPS preliminary screening 写成最终实验方案
+- 确认没有把 candidate-region variant calling 写成 WGS/GBS 群体变异检测
 - 确认没有无意修改 RNA-seq DEG workflow 或 R workflow
 
 ## 9. 常见问题
@@ -188,4 +211,4 @@ unittest 会覆盖一部分 CLI 行为，但手动跑真实输出目录可以确
 
 ## 10. 学习建议
 
-先读 `tests/test_flavonoid_marker_qa.py`，因为它最短，能快速理解项目硬性质量要求。再读 `tests/test_flavonoid_agent_layer.py`，理解 agent layer 的边界。最后读 `tests/test_omics_modules.py`，理解代谢组和基因组模块为什么要在缺文件时返回 warning 而不是崩溃。
+先读 `tests/test_flavonoid_marker_qa.py`，因为它最短，能快速理解项目硬性质量要求。再读 `tests/test_agent_interface.py` 和 `tests/test_flavonoid_agent_layer.py`，理解 agent layer 的边界。之后读 `tests/test_langgraph_flavonoid_workflow.py`、`tests/test_deepagents_poc.py` 和 `tests/test_promoter_design_scaffold.py`，理解当前智能体编排与设计型 scaffold 的能力边界。

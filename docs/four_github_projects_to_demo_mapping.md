@@ -4,9 +4,7 @@
 
 当前项目不只是一个单一的 RNA-seq DEG 页面，而是要逐步形成一个面向杂粮育种场景的多组学智能体 Demo。
 
-第一阶段已经把 Transcriptomics DEG Module 跑通：用户可以在 Gradio 页面中输入 BAM 目录、GFF 注释、目标性状等信息，系统自动完成 DEG 分析，并生成 `report.md`、`manifest.json`、`run.log`、`standardized_evidence.tsv` 和 `recommendation_report.md`。
-
-后续目标是把 transcriptomics、metabolomics、genomics/GWAS 和 integration recommendation 逐步接入同一个 Demo。也就是说，页面上看到的不只是一个分析工具，而是一个可以接受数据、理解分析目标、调用确定性分析流程、沉淀证据表并输出候选解释的 Agri Multi-omics Breeding Agent。
+第一阶段已经把 Transcriptomics DEG Module 跑通；当前又完成了 Metabolomics evidence、Genomics / GWAS region 展示、Genomics Candidate Variant Calling MVP、flavonoid marker recommendation、LangGraph workflow、Deep Agents POC 和 Promoter Design scaffold。页面上看到的不只是一个分析工具，而是一个可以接受本地数据路径、调用确定性分析流程、沉淀证据表并输出候选解释的 Agri Multi-omics Breeding Agent。
 
 ## 2. AutoBA 对本项目的启发
 
@@ -31,17 +29,19 @@ OmicsAgent 对本项目的启发是多组学 skills 架构。
 
 它不是把所有能力写成一个大脚本，而是把不同组学任务拆成相对独立的 skill 或 module。每个 module 负责一种清晰的分析能力，最后由上层系统组合调用。
 
-对应到我们的 Demo，当前已经跑通的 Transcriptomics DEG Module 可以看作第一个 skill：
+对应到我们的 Demo，当前已经跑通的模块都可以看作独立 skill / module：
 
 - 输入：BAM、GFF、contrast、trait、outdir。
 - 执行：featureCounts + limma-voom R workflow。
 - 输出：significant genes、report、manifest、run log、standardized evidence、recommendation report。
 
-后续可以继续扩展：
-
-- Metabolomics Module：读取代谢物表，输出差异代谢物和代谢证据。
-- Genomics / GWAS Module：读取 genotype/VCF 和 phenotype，输出候选位点或候选区域。
-- Integration Module：把不同组学证据统一成 `standardized_evidence.tsv`，再生成 `recommendation_report.md`。
+- Metabolomics Module：读取已有代谢物表，输出代谢证据。
+- Genomics / GWAS Module：读取 genome/GFF/regions/annotation，展示候选区域和 annotation evidence。
+- Genomics Candidate Variant Calling MVP：输出真实候选区域 SNP/InDel、PASS/LowQual 和 KASP/CAPS preliminary screening。
+- Flavonoid Marker Recommendation：把 transcriptomics、metabolomics、annotation、literature 和 variant evidence 聚合为候选标记推荐。
+- LangGraph workflow：把规则化 agents 节点化，作为当前主线开源智能体编排框架。
+- Deep Agents POC：并行 harness 验证入口，不替代 LangGraph。
+- Promoter Design scaffold：任务定义和占位输出，不生成真实启动子序列。
 
 因此，OmicsAgent 给我们的落地启发是：当前 Demo 的每个 Tab 不只是页面占位，而是未来可逐步升级成独立 skill/module 的入口。
 
@@ -92,15 +92,17 @@ GPTomics bioSkills 对本项目的启发是 `SKILL.md` 形式的实验流程沉�
 
 1. 打开 Multi-omics Gradio 页面，说明它不是单一 RNA-seq 页面，而是面向多组学育种智能体的 Demo。
 2. 展示 Transcriptomics DEG Module 可运行，输入 BAM directory、GFF annotation、trait 后运行分析。
-3. 展示 Metabolomics Module 和 Genomics / GWAS Module 当前仍为占位，说明它们是后续 skill/module 扩展入口。
-4. 展示 `standardized_evidence.tsv`，说明 DEG 结果已经被转成标准证据表，后续可以接入代谢组、基因组和表型证据。
-5. 展示 `recommendation_report.md`，说明当前系统已经可以基于 transcriptomics evidence 生成第一版候选解释。
-6. 展示 `report.md`、`manifest.json` 和 `run.log`，说明结果不仅能展示，也能追溯和复现。
+3. 展示 Metabolomics Module 和 Genomics / GWAS Module，说明它们已经能读取学长 mini 数据包的已有结果表和区域注释。
+4. 展示 Candidate Variant Calling MVP 的 PASS/LowQual、SNP/InDel、KASP/CAPS preliminary screening 输出。
+5. 展示谷子黄酮候选标记推荐报告，说明系统已经满足三个固定基因、统计学数值、文献 DOI、`群体` 和 SNP/InDel/KASP/CAPS 推荐要求。
+6. 展示 LangGraph workflow 的 `langgraph_summary.md`、`node_decision_table.tsv` 和 `graph_trace.json`。
+7. 简要说明 Deep Agents POC 和 Promoter Design scaffold 都已存在，但当前不接真实 LLM、不训练启动子模型。
 
 今晚需要强调的结论：
 
-- 当前版本仅基于 transcriptomics evidence。
-- Metabolomics 和 Genomics/GWAS 仍是占位模块。
-- `recommendation_report.md` 不是最终育种方案，只是候选证据解释。
+- 当前版本已经跨 transcriptomics、metabolomics、annotation、literature 和 candidate variant evidence。
+- LangGraph 是主线编排框架，Deep Agents 是并行 POC。
+- 当前没有真实 LLM 推理；本地开源模型接入是下一阶段。
+- Promoter Design 当前只是 scaffold，不是启动子生成模型。
+- `flavonoid_marker_report.md` 不是最终育种方案；KASP/CAPS 不是最终实验方案，candidate-region variant calling 不能替代 WGS/GBS 群体检测。
 - 这个 Demo 的价值在于打通了从数据输入、确定性工具调用、证据标准化到推荐报告生成的最小闭环。
-

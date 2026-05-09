@@ -4,7 +4,7 @@
 
 本模块是现有 Flavonoid Marker Recommendation 的并行 LangGraph workflow。它把当前规则化 DeepRare-like lightweight agents 包装为 LangGraph nodes，用于展示开源智能体编排框架下的多步骤分析流程。
 
-当前仍然是规则化 agent，不调用真实大模型，不调用本地开源大模型，不调用外部 API，不接入 Deep Agents。Deep Agents 仅作为后续阶段规划。
+当前仍然是规则化 agent，不调用真实大模型，不调用本地开源大模型，不调用外部 API。LangGraph 是当前主线开源智能体编排框架；Deep Agents 已有并行 POC，但不替代 LangGraph。
 
 ## 2. 为什么先接 LangGraph
 
@@ -183,7 +183,7 @@ langgraph_outdir = outputs/flavonoid_marker_langgraph
 - `reports/flavonoid_marker_report.md`
 - Details 中的 `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`
 
-Gradio 只是展示层和 workflow 触发入口，不重复实现 LangGraph 节点逻辑。当前 LangGraph workflow 仍是规则化 agents 编排，不调用真实 LLM；Deep Agents 和本地开源大模型只是后续规划。
+Gradio 只是展示层和 workflow 触发入口，不重复实现 LangGraph 节点逻辑。当前 LangGraph workflow 仍是规则化 agents 编排，不调用真实 LLM。Deep Agents POC 已作为并行入口存在，但当前未接入 Gradio，且不替代 LangGraph；本地开源大模型仍是后续规划。
 
 ## 9. 与旧 workflow 的关系
 
@@ -203,7 +203,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 - 不调用本地开源大模型。
 - 不调用 OpenAI SDK。
 - 不调用外部 API。
-- 不接入 Deep Agents。
+- 不在 LangGraph 主流程中接入 Deep Agents；Deep Agents 仅作为并行 POC。
 - 不伪造 DOI。
 - 不伪造 SNP/InDel 位点。
 - LowQual 不得作为优先推荐。
@@ -212,4 +212,4 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 
 ## 11. 后续规划
 
-后续可以在已有 `AgentInput` / `AgentOutput` adapter 层接入本地开源模型或 OpenAI。Deep Agents 可作为更高层规划，但应在单独阶段接入。无论接入哪类模型，都必须保留规则 fallback，并继续通过 ReviewerAgent 和 FinalQAAgent。
+后续可以在已有 `AgentInput` / `AgentOutput` adapter 层接入本地开源模型或 OpenAI。ReviewerAgent + Ollama/Qwen 是下一阶段候选方案，不是当前已完成能力。无论接入哪类模型，都必须保留规则 fallback，并继续通过 ReviewerAgent 和 FinalQAAgent。

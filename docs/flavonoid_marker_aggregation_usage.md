@@ -50,11 +50,11 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
   --outdir outputs/flavonoid_marker_from_package
 ```
 
-该命令不调用外部 API，不引入 Deep Agents 或 LangGraph，不调用 LLM。
+该旧 CLI 不调用外部 API，不调用真实 LLM，也不依赖 LangGraph 或 Deep Agents。可通过 `--variant-calling-dir outputs/genomics_variant_calling` 可选接入已生成的 candidate variant calling evidence。
 
 ## DeepRare-like lightweight agent layer
 
-当前 agent 层是规则版编排层，不调用 LLM，不调用外部 API，也不引入 Deep Agents 或 LangGraph。它的目标是把 aggregation workflow 拆成可审阅的角色模块，而不是改变 CLI 或输出结构。
+当前 agent 层是规则版编排层，不调用 LLM，不调用外部 API。它的目标是把 aggregation workflow 拆成可审阅的角色模块，而不是改变 CLI 或输出结构。LangGraph 主线 workflow 和 Deep Agents POC 都复用这一层，但不改变旧 CLI 的默认行为。
 
 已实现模块：
 
@@ -77,7 +77,27 @@ src/breeding_agent/agents/
 - `FlavonoidReviewerAgent`：检查过度推断、缺失统计值、缺失 DOI、缺失验证方案和疑似伪造 variant 位点。
 - `FlavonoidFinalQAAgent`：包装复用 `src/breeding_agent/integration/flavonoid_marker_qa.py`，不重复实现冲突 QA 逻辑。
 
-后续如果需要接入大模型，应通过明确的 adapter 接入 `FlavonoidLiteratureAgent`、`FlavonoidMarkerRecommendationAgent` 或 `FlavonoidReviewerAgent`，并保留当前规则 fallback。接入前仍必须遵守：不伪造 DOI、不伪造 SNP/InDel 位点、`variant_status=not_called` 时不能输出具体位点。
+后续如果需要接入大模型，应通过明确的 adapter 接入 `FlavonoidLiteratureAgent`、`FlavonoidMarkerRecommendationAgent` 或 `FlavonoidReviewerAgent`，并保留当前规则 fallback。ReviewerAgent + Ollama/Qwen 是下一阶段方案，不是当前已完成能力。接入前仍必须遵守：不伪造 DOI、不伪造 SNP/InDel 位点、`variant_status=not_called` 时不能输出具体位点。
+
+## LangGraph 和 Deep Agents POC
+
+LangGraph 是当前主线开源智能体编排框架：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+Deep Agents POC 是并行 harness 验证入口，不替代 LangGraph：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_deepagents \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_deepagents \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
 
 ## 输出文件位置
 

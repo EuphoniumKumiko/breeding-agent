@@ -1,10 +1,14 @@
-# RNA-seq DEG Tool Agent Demo 汇报简报
+# Multi-omics Breeding Agent Demo 汇报简报
 
 ## 当前任务背景
 
-本阶段目标是把已有的 mini RNA-seq DEG 复现流程，从手动脚本执行整理成一个可演示、可追踪的小型 Tool Agent Demo。
+当前项目已经从最初的 mini RNA-seq DEG 复现 Demo，扩展为谷子多组学育种智能体 Demo。主线包括生信数据处理层和智能体聚合分析层：
 
-重点不是重新开发差异表达算法，而是把专业分析流程封装成一个稳定入口：
+- 生信数据处理层：RNA-seq DEG、metabolomics evidence analysis、genomics region analysis、Genomics Candidate Variant Calling MVP。
+- 智能体聚合分析层：flavonoid marker recommendation、LLM-ready rule agents、LangGraph 多智能体 workflow、Deep Agents POC。
+- 设计型任务准备：Promoter Design scaffold。
+
+重点不是重新开发差异表达、variant calling 或启动子生成算法，而是把专业分析流程封装成稳定、可追踪、可汇报的入口：
 
 - 输入专业数据路径。
 - 自动调用成熟分析工具。
@@ -16,18 +20,14 @@
 
 ```mermaid
 flowchart TD
-    A[用户输入 BAM 目录、GFF 文件和分析参数] --> B[输入与环境校验]
-    B --> C[featureCounts 统计 gene-level counts]
-    C --> D[Rscript 调用 limma-voom 差异分析流程]
-    D --> E[输出显著基因表]
-    E --> F[解析目标基因和统计结果]
-    F --> G[生成 report.md]
-    B --> H[记录 manifest.json]
-    C --> I[记录 logs/run.log]
-    D --> I
-    G --> J[CLI 或 Gradio 页面展示]
-    H --> J
-    I --> J
+    A[本地多组学 evidence / BAM / GFF / variant calling 输出] --> B[生信 workflow 和 evidence 聚合]
+    B --> C[规则化 agents / context builder]
+    C --> D[LangGraph 主线编排]
+    C --> E[Deep Agents POC]
+    B --> F[Gradio 顶部 Tab 展示]
+    D --> F
+    E --> G[POC trace / summary]
+    B --> H[Promoter Design scaffold]
 ```
 
 ## DeepRare-like 对应关系
@@ -36,40 +36,37 @@ flowchart TD
 
 | DeepRare-like 环节 | 当前 Demo 对应实现 |
 | --- | --- |
-| 用户输入专业数据 | 输入 BAM 目录、GFF 文件、contrast、prefix、threads、outdir |
-| 系统调用专业工具 | 调用 `featureCounts` 和 R 差异表达分析脚本 |
-| 生成结构化结果 | 输出 gene counts、显著基因 TSV、manifest JSON |
-| 自动生成报告 | 生成 `reports/report.md` |
-| 可追踪运行过程 | 保存 `logs/run.log` 和 `manifest.json` |
-| 可交互演示 | 提供 Gradio Web Demo |
+| 用户输入专业数据 | 输入 BAM/GFF、evidence TSV、variant calling 目录、gene sequence/function 等 |
+| 系统调用专业工具 | 调用 RNA-seq DEG、metabolomics/genomics modules、candidate variant calling workflow |
+| 生成结构化结果 | 输出候选基因/候选标记表、variant tables、manifest JSON、QA JSON |
+| 自动生成报告 | 生成 DEG、omics、flavonoid marker、LangGraph、Deep Agents POC、Promoter scaffold 报告 |
+| 可追踪运行过程 | 保存 run log、manifest、graph trace、decision table |
+| 可交互演示 | 提供顶部 `gr.Tab` Gradio Workbench |
 
 ## 当前已完成工作
 
-已经完成一个最小可用的 RNA-seq DEG Tool Agent Demo：
+已经完成：
 
-- Python CLI：
+- RNA-seq DEG CLI：
   - `python -m breeding_agent.cli.deg`
   - 支持传入 BAM 目录、GFF、contrast、prefix、threads、outdir。
-- Workflow 封装：
-  - 自动查找 BAM 文件。
-  - 创建输出目录。
-  - 调用 `featureCounts`。
-  - 调用 R 差异分析脚本。
-  - 检查显著基因结果。
-- 输入校验：
-  - 检查 BAM 目录。
-  - 检查 GFF 文件。
-  - 检查 `featureCounts` 和 `Rscript`。
-- 运行追踪：
-  - `logs/run.log`
-  - `manifest.json`
-- 报告生成：
-  - `reports/report.md`
-  - 自动解析目标基因 `Si9g04210.1`。
+- 谷子黄酮候选标记推荐：
+  - 满足 `Si9g04210.1`、`Si5g31340.1`、`Si9g34380.1`、`群体`、文献查阅、DOI、统计值、SNP/InDel/KASP/CAPS 推荐要求。
+  - 可选接入 Genomics Candidate Variant Calling MVP 输出。
+- Genomics Candidate Variant Calling MVP：
+  - 输出 PASS/LowQual、SNP/InDel、KASP/CAPS preliminary screening 表。
+- LLM-ready Agent Interface：
+  - 当前默认规则化，不调用真实 LLM。
+- LangGraph workflow：
+  - 主线开源智能体编排框架，已接入 Gradio 展示。
+- Deep Agents POC：
+  - 已跑通并输出 trace/summary/decision table，但不替代 LangGraph。
+- Promoter Design scaffold：
+  - 已定义任务、schema、数据盘点和占位 CLI/workflow，不训练模型，不生成真实启动子序列。
 - Gradio Web Demo：
-  - 页面标题为 `Agri RNA-seq DEG Agent Demo`。
-  - 支持一键加载 demo benchmark。
-  - 支持在页面运行 DEG 分析并展示结果。
+  - 页面标题为 `Agri Multi-omics Breeding Agent Demo`。
+  - 使用顶部 `gr.Tab` 结构，不是左侧 sticky dashboard。
+  - 支持展示 Transcriptomics、Metabolomics、Genomics / GWAS、Integration & Recommendation 和谷子黄酮候选标记推荐。
 
 ## Demo 演示步骤
 
@@ -83,7 +80,7 @@ micromamba activate rnaseq_deg
 2. 启动 Gradio Demo：
 
 ```bash
-PYTHONPATH=src python -m breeding_agent.web.gradio_app
+PYTHONPATH=src python3 -m breeding_agent.web.gradio_app
 ```
 
 3. 浏览器访问：
@@ -92,7 +89,7 @@ PYTHONPATH=src python -m breeding_agent.web.gradio_app
 http://<debian-vm-ip>:7860
 ```
 
-4. 点击：
+4. 在顶部 Tab 中选择需要演示的模块。RNA-seq 可点击：
 
 ```text
 Load Demo Benchmark
@@ -123,38 +120,15 @@ Run DEG Analysis
 - manifest JSON。
 - run log。
 
-## 当前结果解释
+## 当前能力边界
 
-当前 mini benchmark 的目标基因为：
-
-```text
-Si9g04210.1
-```
-
-默认对比为：
-
-```text
-contrast = JM-LM
-```
-
-解释规则：
-
-- `logFC > 0`: JM 组高表达。
-- `logFC < 0`: LM 组高表达。
-
-当前结果中：
-
-```text
-Si9g04210.1 的 logFC < 0
-```
-
-因此结论是：
-
-```text
-Si9g04210.1 在 LM 组显著高表达。
-```
-
-这说明当前 CLI 和 Web Demo 能够复现 mini DEG benchmark 中的目标基因结果。
+- 不伪造 SNP/InDel 位点。
+- 不伪造 DOI。
+- 不伪造启动子序列。
+- KASP/CAPS 表只是 preliminary screening，不是最终引物或酶切方案。
+- Candidate-region variant calling 不能替代 WGS/GBS 群体变异检测。
+- 当前没有真实 LLM 推理；本地开源大模型接入是下一阶段。
+- Promoter Design 当前只是 scaffold，不是启动子生成模型。
 
 ## 后续计划
 
@@ -170,8 +144,7 @@ Si9g04210.1 在 LM 组显著高表达。
    - 增加目标基因 counts 可视化。
    - 增加参数和软件版本摘要。
 
-3. Tool Agent 能力增强：
-   - 增加任务状态管理。
-   - 增加历史任务列表。
-   - 后续再接入大模型解释层，但第一阶段保持工具流程稳定和可复现。
-
+3. 智能体能力增强：
+   - 在保留规则 fallback 的前提下，评估 ReviewerAgent + Ollama/Qwen 等本地开源模型 adapter。
+   - 继续保持 LangGraph 为主线编排框架，Deep Agents 作为并行 POC。
+   - 为 Promoter Design 积累高可信 promoter activity 数据集后再考虑生成模型。
