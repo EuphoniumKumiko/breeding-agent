@@ -153,7 +153,39 @@ outputs/flavonoid_marker_langgraph/
 
 `langgraph_summary.md` 说明 graph 流程、node 与 agent 对应关系、variant evidence 是否接入、ReviewerAgent 如何防止过度推断、FinalQAAgent 检查结果，以及当前没有接入真实 LLM。
 
-## 8. 与旧 workflow 的关系
+## 8. Gradio 展示
+
+现有 Gradio 页面 `谷子黄酮候选标记推荐` Tab 已新增：
+
+```text
+LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）
+```
+
+默认输入：
+
+```text
+evidence_dir = outputs/flavonoid_marker_from_package/evidence
+variant_calling_dir = outputs/genomics_variant_calling
+langgraph_outdir = outputs/flavonoid_marker_langgraph
+```
+
+按钮：
+
+- `Run LangGraph Workflow`：调用现有 `run_flavonoid_marker_langgraph_task()`。
+- `Refresh LangGraph Results`：只读取已有 `langgraph_outdir` 结果。
+
+页面展示：
+
+- LangGraph Run Status
+- LangGraph QA Status
+- `graph/langgraph_summary.md`
+- `graph/node_decision_table.tsv`
+- `reports/flavonoid_marker_report.md`
+- Details 中的 `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`
+
+Gradio 只是展示层和 workflow 触发入口，不重复实现 LangGraph 节点逻辑。当前 LangGraph workflow 仍是规则化 agents 编排，不调用真实 LLM；Deep Agents 和本地开源大模型只是后续规划。
+
+## 9. 与旧 workflow 的关系
 
 旧 workflow 和旧 CLI 保持不变：
 
@@ -165,7 +197,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 
 旧 CLI 的 `--variant-calling-dir` 也保持可用。LangGraph 版是并行入口，不替代旧 workflow。
 
-## 9. 当前限制
+## 10. 当前限制
 
 - 不调用真实大模型。
 - 不调用本地开源大模型。
@@ -178,6 +210,6 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 - KASP/CAPS preliminary screening 不等于最终标记。
 - 当前候选区域 variant calling 不能替代 WGS/GBS 群体变异检测。
 
-## 10. 后续规划
+## 11. 后续规划
 
 后续可以在已有 `AgentInput` / `AgentOutput` adapter 层接入本地开源模型或 OpenAI。Deep Agents 可作为更高层规划，但应在单独阶段接入。无论接入哪类模型，都必须保留规则 fallback，并继续通过 ReviewerAgent 和 FinalQAAgent。

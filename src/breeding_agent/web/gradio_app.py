@@ -19,6 +19,11 @@ from breeding_agent.workflows.flavonoid_marker_aggregation import (
     FlavonoidMarkerAggregationConfig,
     run_flavonoid_marker_aggregation_task,
 )
+from breeding_agent.workflows.flavonoid_marker_langgraph import (
+    DEFAULT_LANGGRAPH_OUTDIR,
+    FlavonoidMarkerLangGraphConfig,
+    run_flavonoid_marker_langgraph_task,
+)
 from breeding_agent.workflows.genomics_region import (
     GenomicsRegionConfig,
     run_genomics_region_task,
@@ -49,6 +54,7 @@ DEMO_OUTDIR = "outputs/gradio_demo_run"
 FLAVONOID_DEFAULT_DATASET_DIR = "data/private/flavonoid_marker_mini_5genes_50kb"
 FLAVONOID_DEFAULT_EVIDENCE_DIR = "outputs/flavonoid_marker_from_package/evidence"
 FLAVONOID_DEFAULT_OUTDIR = "outputs/flavonoid_marker_from_package"
+FLAVONOID_LANGGRAPH_DEFAULT_OUTDIR = DEFAULT_LANGGRAPH_OUTDIR
 METABOLOMICS_DEFAULT_OUTDIR = "outputs/gradio_metabolomics_run"
 GENOMICS_DEFAULT_OUTDIR = "outputs/gradio_genomics_run"
 GENOMICS_VARIANT_DEFAULT_DATASET_DIR = FLAVONOID_DEFAULT_DATASET_DIR
@@ -471,6 +477,62 @@ def refresh_flavonoid_outputs(
     )
 
 
+def run_langgraph_workflow_ui(
+    evidence_dir: str,
+    outdir: str,
+    variant_calling_dir: str,
+) -> tuple[str, str, str, list[list[str]], str, str, str, str, str]:
+    warning_lines = []
+    outdir_path = Path(outdir).expanduser()
+    variant_dir = _optional_existing_dir(variant_calling_dir)
+    if variant_calling_dir and variant_dir is None:
+        warning_lines.append(
+            "variant_calling_dir 不存在或留空，LangGraph workflow 将不接入 variant evidence: "
+            f"{variant_calling_dir}"
+        )
+    try:
+        result = run_flavonoid_marker_langgraph_task(
+            FlavonoidMarkerLangGraphConfig(
+                evidence_dir=Path(evidence_dir).expanduser(),
+                outdir=outdir_path,
+                variant_calling_dir=variant_dir,
+            )
+        )
+        outputs = result.get("outputs", {})
+        status = "LangGraph workflow 运行成功。"
+        if isinstance(outputs, dict):
+            status += (
+                f"\ngraph_trace: {outputs.get('graph_trace')}"
+                f"\nlanggraph_summary: {outputs.get('langgraph_summary')}"
+                f"\nreport: {outputs.get('report')}"
+            )
+    except RuntimeError as exc:
+        if "LangGraph is not installed" in str(exc):
+            status = "LangGraph is not installed. Install with: pip install langgraph"
+        else:
+            status = f"LangGraph workflow 运行失败: {exc}"
+            warning_lines.append(traceback.format_exc())
+    except Exception as exc:
+        status = f"LangGraph workflow 运行失败: {exc}"
+        warning_lines.append(traceback.format_exc())
+
+    return load_langgraph_outputs(
+        outdir=outdir_path,
+        status=status,
+        warning_lines=warning_lines,
+    )
+
+
+def refresh_langgraph_outputs(
+    outdir: str,
+) -> tuple[str, str, str, list[list[str]], str, str, str, str, str]:
+    return load_langgraph_outputs(
+        outdir=Path(outdir).expanduser(),
+        status="已刷新 LangGraph workflow 输出文件。",
+        warning_lines=[],
+    )
+
+
 def build_app() -> gr.Blocks:
     with gr.Blocks(title="Agri Multi-omics Breeding Agent Demo") as demo:
         gr.Markdown("# Agri Multi-omics Breeding Agent Demo")
@@ -874,6 +936,64 @@ def build_app() -> gr.Blocks:
                 flavonoid_qa_json = gr.Textbox(label="qa_check.json", lines=18)
                 flavonoid_manifest_json = gr.Textbox(label="manifest.json", lines=18)
 
+            gr.Markdown("## LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）")
+            gr.Markdown(
+                "当前 LangGraph workflow 使用现有规则化 agents，不调用真实大模型。"
+                "LangGraph 用于编排 LiteratureAgent、MarkerRecommendationAgent、"
+                "ValidationAgent、ReviewerAgent、FinalQAAgent。\n\n"
+                "`graph_trace.json` 和 `node_decision_table.tsv` 用于追踪每个节点的"
+                "输入、输出、证据、警告和限制。后续可以在该 graph node 基础上接入"
+                "本地开源大模型或 Deep Agents。当前结果仍不能替代 WGS/GBS 群体变异检测；"
+                "KASP/CAPS 表仍是 preliminary screening，不是最终引物或酶切方案。"
+            )
+            with gr.Row():
+                with gr.Column():
+                    langgraph_outdir = gr.Textbox(
+                        label="langgraph_outdir",
+                        value=FLAVONOID_LANGGRAPH_DEFAULT_OUTDIR,
+                    )
+                    with gr.Row():
+                        run_langgraph_button = gr.Button(
+                            "Run LangGraph Workflow",
+                            variant="primary",
+                        )
+                        refresh_langgraph_button = gr.Button(
+                            "Refresh LangGraph Results"
+                        )
+                with gr.Column():
+                    langgraph_status = gr.Textbox(
+                        label="LangGraph Run Status（运行状态）",
+                        lines=8,
+                    )
+                    langgraph_qa_status = gr.Textbox(
+                        label="LangGraph QA Status（QA 状态）",
+                        lines=2,
+                    )
+
+            gr.Markdown("### LangGraph Summary（LangGraph 摘要）")
+            langgraph_summary = gr.Markdown()
+            gr.Markdown("### Node Decision Table（节点决策表）")
+            langgraph_node_decision_table = gr.DataFrame(
+                label="node_decision_table.tsv",
+                headers=None,
+                datatype="str",
+                interactive=False,
+                wrap=True,
+            )
+            gr.Markdown("### Final Report（最终报告）")
+            langgraph_final_report = gr.Markdown()
+            with gr.Accordion("Details", open=False):
+                langgraph_graph_trace = gr.Textbox(
+                    label="graph_trace.json",
+                    lines=18,
+                )
+                langgraph_graph_state = gr.Textbox(
+                    label="graph_state_final.json",
+                    lines=18,
+                )
+                langgraph_qa_json = gr.Textbox(label="qa_check.json", lines=18)
+                langgraph_manifest_json = gr.Textbox(label="manifest.json", lines=18)
+
         flavonoid_button_inputs = [
             flavonoid_dataset_dir,
             flavonoid_evidence_dir,
@@ -913,6 +1033,31 @@ def build_app() -> gr.Blocks:
             fn=refresh_flavonoid_outputs,
             inputs=[flavonoid_outdir],
             outputs=flavonoid_outputs,
+        )
+        langgraph_outputs = [
+            langgraph_status,
+            langgraph_qa_status,
+            langgraph_summary,
+            langgraph_node_decision_table,
+            langgraph_graph_trace,
+            langgraph_graph_state,
+            langgraph_final_report,
+            langgraph_qa_json,
+            langgraph_manifest_json,
+        ]
+        run_langgraph_button.click(
+            fn=run_langgraph_workflow_ui,
+            inputs=[
+                flavonoid_evidence_dir,
+                langgraph_outdir,
+                flavonoid_variant_calling_dir,
+            ],
+            outputs=langgraph_outputs,
+        )
+        refresh_langgraph_button.click(
+            fn=refresh_langgraph_outputs,
+            inputs=[langgraph_outdir],
+            outputs=langgraph_outputs,
         )
 
     return demo
@@ -1070,6 +1215,53 @@ def load_variant_calling_outputs(
         read_text_file(report_path),
         _read_json_text(manifest_path),
         read_text_file(run_log_path),
+    )
+
+
+def load_langgraph_outputs(
+    *,
+    outdir: Path,
+    status: str,
+    warning_lines: list[str],
+) -> tuple[str, str, str, list[list[str]], str, str, str, str, str]:
+    graph_dir = outdir / "graph"
+    summary_path = graph_dir / "langgraph_summary.md"
+    decision_path = graph_dir / "node_decision_table.tsv"
+    trace_path = graph_dir / "graph_trace.json"
+    state_path = graph_dir / "graph_state_final.json"
+    report_path = outdir / "reports" / "flavonoid_marker_report.md"
+    qa_path = outdir / "logs" / "qa_check.json"
+    manifest_path = outdir / "manifest.json"
+
+    required_outputs = [
+        summary_path,
+        decision_path,
+        trace_path,
+        state_path,
+        report_path,
+        qa_path,
+        manifest_path,
+    ]
+    missing_outputs = [path for path in required_outputs if not path.exists()]
+    if missing_outputs:
+        warning_lines.append(
+            "尚未生成 LangGraph workflow 结果，请先点击 Run LangGraph Workflow。"
+        )
+        warning_lines.extend(f"Missing output: {path}" for path in missing_outputs)
+
+    if warning_lines:
+        status = status + "\n\nWarnings:\n" + "\n".join(warning_lines)
+
+    return (
+        status,
+        _flavonoid_qa_status(qa_path),
+        read_text_file(summary_path),
+        read_tsv_for_display(decision_path),
+        _read_json_text(trace_path),
+        _read_json_text(state_path),
+        read_text_file(report_path),
+        _read_json_text(qa_path),
+        _read_json_text(manifest_path),
     )
 
 

@@ -58,13 +58,14 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 
 ## 输入框
 
-`谷子黄酮候选标记推荐` Tab 当前有四个输入框：
+`谷子黄酮候选标记推荐` Tab 当前有五个输入框：
 
 ```text
 dataset_dir
 evidence_dir
 outdir
 variant_calling_dir
+langgraph_outdir
 ```
 
 默认值：
@@ -74,6 +75,7 @@ dataset_dir = data/private/flavonoid_marker_mini_5genes_50kb
 evidence_dir = outputs/flavonoid_marker_from_package/evidence
 outdir = outputs/flavonoid_marker_from_package
 variant_calling_dir = outputs/genomics_variant_calling
+langgraph_outdir = outputs/flavonoid_marker_langgraph
 ```
 
 含义：
@@ -82,16 +84,19 @@ variant_calling_dir = outputs/genomics_variant_calling
 - `evidence_dir`：从数据包转换得到的标准 evidence TSV 目录。
 - `outdir`：flavonoid marker aggregation 输出目录。
 - `variant_calling_dir`：可选 Genomics Candidate Variant Calling MVP 输出目录。留空或目录不存在时保持原有黄酮推荐流程，不失败；目录存在时读取 variant evidence 并接入报告。
+- `langgraph_outdir`：LangGraph workflow 输出目录，用于展示 graph trace、节点决策表、summary、最终报告、QA 和 manifest。
 
 ## 按钮
 
-当前 Tab 有四个按钮：
+当前 Tab 有六个按钮：
 
 ```text
 生成 evidence
 运行标记推荐
 一键运行完整流程
 刷新当前结果
+Run LangGraph Workflow
+Refresh LangGraph Results
 ```
 
 ### 生成 evidence
@@ -148,6 +153,30 @@ outputs/genomics_variant_calling/tables/caps_candidate_sites.tsv
 
 如果上一次推荐运行时接入了 `variant_calling_dir`，刷新后报告中应能看到 `候选区域变异 calling 证据` 小节，包括三个固定基因的 `variant_evidence_status`。
 
+### Run LangGraph Workflow
+
+调用现有：
+
+```text
+src/breeding_agent/workflows/flavonoid_marker_langgraph.py
+```
+
+它复用 `evidence_dir`、`variant_calling_dir` 和 `langgraph_outdir`，运行已实现的 LangGraph 多智能体编排 workflow。Gradio 不重复实现 LangGraph 节点逻辑。
+
+如果 LangGraph 未安装，页面会显示：
+
+```text
+LangGraph is not installed. Install with: pip install langgraph
+```
+
+### Refresh LangGraph Results
+
+只读取 `langgraph_outdir` 下已有输出，不重新运行 workflow。若结果不存在，页面提示：
+
+```text
+尚未生成 LangGraph workflow 结果，请先点击 Run LangGraph Workflow。
+```
+
 ## 页面输出
 
 当前 Tab 展示：
@@ -160,6 +189,12 @@ outputs/genomics_variant_calling/tables/caps_candidate_sites.tsv
 - `候选区域变异 calling 证据`
 - `qa_check.json`
 - `manifest.json`
+- LangGraph Run Status
+- LangGraph QA Status
+- LangGraph Summary
+- Node Decision Table
+- LangGraph Final Report
+- Details: `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`
 
 对应文件通常位于：
 
@@ -168,6 +203,18 @@ outputs/flavonoid_marker_from_package/integration/flavonoid_marker_candidates.ts
 outputs/flavonoid_marker_from_package/reports/flavonoid_marker_report.md
 outputs/flavonoid_marker_from_package/logs/qa_check.json
 outputs/flavonoid_marker_from_package/manifest.json
+```
+
+LangGraph 输出通常位于：
+
+```text
+outputs/flavonoid_marker_langgraph/graph/graph_trace.json
+outputs/flavonoid_marker_langgraph/graph/graph_state_final.json
+outputs/flavonoid_marker_langgraph/graph/node_decision_table.tsv
+outputs/flavonoid_marker_langgraph/graph/langgraph_summary.md
+outputs/flavonoid_marker_langgraph/reports/flavonoid_marker_report.md
+outputs/flavonoid_marker_langgraph/logs/qa_check.json
+outputs/flavonoid_marker_langgraph/manifest.json
 ```
 
 如果文件不存在，页面会显示 `File not found` 或 warning，不会把缺失文件伪装成已有结果。
@@ -213,7 +260,10 @@ QA 会检查：
 ## 关键限制
 
 - 当前 Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 逻辑。
-- 当前 workflow 不调用外部 API，不引入 Deep Agents、LangGraph 或大模型依赖。
+- 默认黄酮推荐 workflow 不调用外部 API，不引入 Deep Agents、LangGraph 或大模型依赖。
+- LangGraph 展示区使用现有规则化 agents，不调用真实大模型；LangGraph 只负责编排 LiteratureAgent、MarkerRecommendationAgent、ValidationAgent、ReviewerAgent、FinalQAAgent。
+- `graph_trace.json` 和 `node_decision_table.tsv` 用于追踪每个节点的输入、输出、证据、警告和限制。
+- 后续可以在 graph node 基础上接入本地开源大模型或 Deep Agents；本轮不接入。
 - DOI 只能来自已核验的 evidence，不能伪造。
 - 当前 mini 数据包未提供最终 SNP/InDel 位点，不能伪造 SNP/InDel 坐标。
 - 如果 genome evidence 中 `variant_status=not_called`，报告必须说明后续需要候选区域 variant calling。

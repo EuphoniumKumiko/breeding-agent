@@ -85,6 +85,8 @@ GRADIO_SERVER_PORT
 | `谷子黄酮候选标记推荐` | `run_flavonoid_marker_recommendation()` | `run_flavonoid_marker_aggregation_task()`，可选读取 `variant_calling_dir` |
 | `谷子黄酮候选标记推荐` | `run_flavonoid_full_pipeline()` | 先 evidence，再 aggregation，可选读取 `variant_calling_dir` |
 | `谷子黄酮候选标记推荐` | `refresh_flavonoid_outputs()` | 读取已有 flavonoid marker 输出 |
+| `谷子黄酮候选标记推荐` | `run_langgraph_workflow_ui()` | `run_flavonoid_marker_langgraph_task()` |
+| `谷子黄酮候选标记推荐` | `refresh_langgraph_outputs()` | 读取已有 LangGraph workflow 输出 |
 
 ## 6. 各 Tab 展示内容
 
@@ -196,6 +198,7 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 - `evidence_dir`
 - `outdir`
 - `variant_calling_dir`
+- `langgraph_outdir`
 
 按钮：
 
@@ -203,6 +206,8 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 - `运行标记推荐`
 - `一键运行完整流程`
 - `刷新当前结果`
+- `Run LangGraph Workflow`
+- `Refresh LangGraph Results`
 
 输出：
 
@@ -214,8 +219,14 @@ PASS variants can be prioritized for downstream marker review（PASS 位点可�
 - `候选区域变异 calling 证据`
 - `qa_check.json`
 - `manifest.json`
+- `LangGraph Summary`
+- `Node Decision Table`
+- `Final Report`
+- Details: `graph_trace.json`、`graph_state_final.json`、`qa_check.json`、`manifest.json`
 
 `variant_calling_dir` 可选，默认 `outputs/genomics_variant_calling`。留空或目录不存在时保持原有黄酮推荐流程；目录存在时读取 `candidate_variants.tsv`、`kasp_candidate_sites.tsv` 和 `caps_candidate_sites.tsv`，并在报告中展示三个固定基因的 `variant_evidence_status`、PASS/LowQual、SNP/InDel、KASP preliminary screening 和 CAPS screening 统计。LowQual 不应直接优先用于 KASP/CAPS 开发，KASP/CAPS 表不是最终引物或酶切方案。
+
+`langgraph_outdir` 默认 `outputs/flavonoid_marker_langgraph`。`Run LangGraph Workflow` 调用现有 LangGraph workflow；`Refresh LangGraph Results` 只读取已有 graph 输出。LangGraph 只编排现有规则化 agents，不调用真实 LLM；后续 Deep Agents / 本地开源大模型只是规划。
 
 ## 7. 普通启动命令
 
@@ -253,6 +264,7 @@ outputs/gradio_metabolomics_run/
 outputs/gradio_genomics_run/
 outputs/genomics_variant_calling/
 outputs/flavonoid_marker_from_package/
+outputs/flavonoid_marker_langgraph/
 ```
 
 这些都是运行输出目录，不应提交 Git。

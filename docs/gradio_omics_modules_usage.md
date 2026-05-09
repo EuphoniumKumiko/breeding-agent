@@ -292,7 +292,13 @@ outputs/gradio_demo_run
 
 ## 谷子黄酮候选标记推荐
 
-该 Tab 用于生成 flavonoid marker evidence、运行 aggregation、查看候选表、报告、QA 和 manifest。详细说明见：
+该 Tab 用于生成 flavonoid marker evidence、运行 aggregation、查看候选表、报告、QA 和 manifest。当前也可展示并触发 LangGraph 多智能体聚合流程：
+
+- `Run LangGraph Workflow`：调用现有 LangGraph workflow。
+- `Refresh LangGraph Results`：只读取 `outputs/flavonoid_marker_langgraph` 下已有输出。
+- 页面展示 `graph/langgraph_summary.md`、`graph/node_decision_table.tsv`、`graph/graph_trace.json`、`graph/graph_state_final.json`、最终报告、QA 和 manifest。
+
+LangGraph 当前只编排现有规则化 agents，不调用真实 LLM；Deep Agents 和本地开源大模型只是后续规划。详细说明见：
 
 ```text
 docs/gradio_flavonoid_marker_usage.md
@@ -306,4 +312,5 @@ docs/gradio_flavonoid_marker_usage.md
 - Metabolomics Module 当前不是完整原始质谱重分析。
 - `variant_status=not_called` 表示没有最终变异位点，不能伪造 SNP/InDel 坐标。
 - Genomics Candidate Variant Calling MVP 是候选区域 calling 展示，不替代 WGS/GBS 群体变异检测。
+- LangGraph workflow 结果同样不能替代 WGS/GBS 群体变异检测；KASP/CAPS 表仍是 preliminary screening，不是最终引物或酶切方案。
 - 后续仍需要更大群体基因型和黄酮含量数据验证关联。
