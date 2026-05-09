@@ -1,5 +1,8 @@
 # Gradio Demo 使用说明
 
+适用读者：需要启动 Gradio demo 或向他人演示页面功能的同学。  
+阅读目标：理解当前 gr.Tab 页面、每个 Tab 的能力边界和 LangGraph/LLM Reviewer 展示位置。
+
 ## Demo 目标
 
 当前 Gradio 页面是 `Agri Multi-omics Breeding Agent Demo`，使用顶部 `gr.Tab` 结构，不是旧版单一 RNA-seq 页面。它既保留 RNA-seq DEG 复现入口，也展示 Metabolomics、Genomics / GWAS、Integration & Recommendation 和谷子黄酮候选标记推荐相关结果。
@@ -105,7 +108,7 @@ http://192.168.x.x:7860
 4. `Integration & Recommendation`
 5. `谷子黄酮候选标记推荐`
 
-Gradio 是展示层和本地 workflow 触发入口，不改变后端业务逻辑。LangGraph workflow 已接入黄酮 Tab 展示；Deep Agents POC 当前是并行 CLI/workflow，未接入 Gradio；Promoter Design scaffold 当前也未接入 Gradio。
+Gradio 是展示层和本地 workflow 触发入口，不改变后端业务逻辑。LangGraph workflow 已接入黄酮 Tab 展示，并可显示本地 LLM Reviewer 状态；Deep Agents POC 当前是并行 CLI/workflow，未接入 Gradio；Promoter Design scaffold 当前也未接入 Gradio。
 
 ## Transcriptomics DEG 页面输入项
 

@@ -1,5 +1,8 @@
 # 四个 GitHub 项目对 Agri Multi-omics Breeding Agent Demo 的启发
 
+适用读者：需要向老师解释项目定位、外部项目启发和当前实现边界的同学。  
+阅读目标：把外部项目启发映射到当前 breeding-agent 的真实能力，不夸大未完成部分。
+
 ## 1. 当前项目目标
 
 当前项目不只是一个单一的 RNA-seq DEG 页面，而是要逐步形成一个面向杂粮育种场景的多组学智能体 Demo。
@@ -96,13 +99,13 @@ GPTomics bioSkills 对本项目的启发是 `SKILL.md` 形式的实验流程沉�
 4. 展示 Candidate Variant Calling MVP 的 PASS/LowQual、SNP/InDel、KASP/CAPS preliminary screening 输出。
 5. 展示谷子黄酮候选标记推荐报告，说明系统已经满足三个固定基因、统计学数值、文献 DOI、`群体` 和 SNP/InDel/KASP/CAPS 推荐要求。
 6. 展示 LangGraph workflow 的 `langgraph_summary.md`、`node_decision_table.tsv` 和 `graph_trace.json`。
-7. 简要说明 Deep Agents POC 和 Promoter Design scaffold 都已存在，但当前不接真实 LLM、不训练启动子模型。
+7. 简要说明 Deep Agents POC 和 Promoter Design scaffold 都已存在；本地 LLM 目前只增强 LangGraph ReviewerAgent，不训练启动子模型。
 
 今晚需要强调的结论：
 
 - 当前版本已经跨 transcriptomics、metabolomics、annotation、literature 和 candidate variant evidence。
 - LangGraph 是主线编排框架，Deep Agents 是并行 POC。
-- 当前没有真实 LLM 推理；本地开源模型接入是下一阶段。
+- 当前本地 LLM 只做 ReviewerAgent 审阅增强，不直接生成 SNP/InDel/KASP/CAPS 结论；更多 Agent 的模型接入是后续规划。
 - Promoter Design 当前只是 scaffold，不是启动子生成模型。
 - `flavonoid_marker_report.md` 不是最终育种方案；KASP/CAPS 不是最终实验方案，candidate-region variant calling 不能替代 WGS/GBS 群体检测。
 - 这个 Demo 的价值在于打通了从数据输入、确定性工具调用、证据标准化到推荐报告生成的最小闭环。

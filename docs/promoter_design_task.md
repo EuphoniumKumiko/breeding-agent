@@ -1,5 +1,8 @@
 # Promoter Design Task
 
+适用读者：准备承接启动子设计任务、整理 promoter 数据集或后续开发 promoter workflow 的同学。  
+阅读目标：明确当前 Promoter Design 只是 scaffold，不训练模型、不生成真实启动子序列。
+
 ## 任务背景：从候选基因到启动子设计
 
 Promoter Design Module 面向老师和学长提出的新设计型任务：输入基因序列和基因功能，输出候选启动子序列及使用方法。它承接当前 breeding-agent 的多组学育种主线，把黄酮候选基因、功能注释、表达目标和后续验证计划组织成可复现任务。

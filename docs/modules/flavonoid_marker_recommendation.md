@@ -1,5 +1,8 @@
 # Flavonoid Marker Recommendation 模块导读
 
+适用读者：维护黄酮候选标记推荐、LangGraph、Deep Agents POC 或本地 LLM Reviewer 的同学。  
+阅读目标：理解该模块的业务职责、输入输出、Agent 边界、variant evidence 和 LLM Reviewer 状态。
+
 ## 1. 模块作用
 
 Flavonoid Marker Recommendation 模块用于谷子黄酮候选标记推荐。它读取已经整理好的标准 evidence TSV，聚合三个固定重点基因的转录组、代谢组、功能注释、基因组变异状态和文献 evidence，输出：
@@ -9,7 +12,7 @@ Flavonoid Marker Recommendation 模块用于谷子黄酮候选标记推荐。它
 - QA 检查 JSON。
 - manifest。
 
-当前默认模块是规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。它不调用 LLM，不调用外部 API。
+当前默认模块是规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。普通 CLI 不调用 LLM，不调用外部 API；LangGraph CLI 可显式启用本地 LLM ReviewerAgent 审阅增强。
 
 项目已新增 LangGraph workflow，用于把现有规则 agents 作为 graph nodes 编排。LangGraph 是当前主线开源智能体编排框架，也是可选依赖；旧 workflow 和旧 CLI 不依赖 LangGraph。
 
@@ -428,15 +431,15 @@ passed=true
 
 ### 这是 LLM agent 吗？
 
-不是。当前 agent layer 是规则版、轻量级、可复现结构，不调用 LLM。现在只是 LLM-ready：有统一 interface、prompt templates 和 context builder，方便未来接入。
+默认不是。当前 agent layer 是规则版、轻量级、可复现结构。现在已有 LLM-ready interface、prompt templates 和 context builder；LangGraph workflow 可选启用本地 OpenAI-compatible LLM，只增强 ReviewerAgent。
 
 ### 未来如何接 OpenAI 或本地模型？
 
-未来应新增独立 adapter：把 `AgentInput` 转成模型请求，把模型输出解析为 `AgentOutput`。模型失败、输出缺字段或违反“不伪造 DOI / SNP/InDel”等硬性限制时，必须丢弃模型输出并 fallback 到规则版。模型输出进入报告前仍要经过 ReviewerAgent 和 FinalQAAgent。
+当前已有本地 OpenAI-compatible adapter 服务 ReviewerAgent。未来扩展到 ValidationAgent 或 LiteratureAgent 时，仍应把 `AgentInput` 转成模型请求，把模型输出解析为 `AgentOutput`。模型失败、输出缺字段或违反“不伪造 DOI / SNP/InDel”等硬性限制时，必须丢弃模型输出并 fallback 到规则版。模型输出进入报告前仍要经过 ReviewerAgent / output_guard / FinalQAAgent。
 
 ### 当前 LangGraph workflow 是什么？
 
-当前已经有 LangGraph workflow。它只把现有 agents 节点化，不改变旧 evidence schema、旧 CLI、报告 QA 和规则 fallback。它不接真实 LLM，不接本地开源大模型，也不把 Deep Agents 嵌入 LangGraph 主流程。
+当前已经有 LangGraph workflow。它把现有 agents 节点化，不改变旧 evidence schema、旧 CLI、报告 QA 和规则 fallback。默认不调用 LLM；显式传入 `--use-llm-reviewer` 和本地 config 时，只允许 ReviewerAgent 调用本地 OpenAI-compatible LLM。Deep Agents 不嵌入 LangGraph 主流程。
 
 LangGraph state 记录 `evidence_dir`、`outdir`、`variant_calling_dir`、`agent_context`、`agent_outputs`、`qa_result` 和 `graph_trace` 等字段。输出包括 `graph_trace.json`、`graph_state_final.json`、`node_decision_table.tsv` 和 `langgraph_summary.md`。
 

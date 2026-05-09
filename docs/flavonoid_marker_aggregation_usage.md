@@ -1,5 +1,8 @@
 # Flavonoid Marker Aggregation 使用说明
 
+适用读者：需要运行或维护普通黄酮候选标记推荐 workflow 的同学。  
+阅读目标：理解规则版 aggregation 的输入输出、Agent 调用和与 LangGraph / LLM Reviewer 的关系。
+
 ## Workflow 定位
 
 `flavonoid_marker_aggregation` 是谷子黄酮候选标记推荐的规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。它读取已经标准化的 evidence TSV，聚合固定重点基因 `Si9g04210.1`、`Si5g31340.1`、`Si9g34380.1`，并生成候选表、Markdown 报告、QA JSON 和 manifest。
@@ -77,7 +80,7 @@ src/breeding_agent/agents/
 - `FlavonoidReviewerAgent`：检查过度推断、缺失统计值、缺失 DOI、缺失验证方案和疑似伪造 variant 位点。
 - `FlavonoidFinalQAAgent`：包装复用 `src/breeding_agent/integration/flavonoid_marker_qa.py`，不重复实现冲突 QA 逻辑。
 
-后续如果需要接入大模型，应通过明确的 adapter 接入 `FlavonoidLiteratureAgent`、`FlavonoidMarkerRecommendationAgent` 或 `FlavonoidReviewerAgent`，并保留当前规则 fallback。ReviewerAgent + Ollama/Qwen 是下一阶段方案，不是当前已完成能力。接入前仍必须遵守：不伪造 DOI、不伪造 SNP/InDel 位点、`variant_status=not_called` 时不能输出具体位点。
+当前已经通过明确 adapter 将本地 OpenAI-compatible LLM 接入 LangGraph 的 `ReviewerAgent`，只做审阅增强。普通 aggregation CLI 仍保持规则版，不调用 LLM。未来如扩展到其他 Agent，仍必须保留规则 fallback，并遵守：不伪造 DOI、不伪造 SNP/InDel 位点、`variant_status=not_called` 时不能输出具体位点。
 
 ## LangGraph 和 Deep Agents POC
 

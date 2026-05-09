@@ -1,5 +1,8 @@
 # LangGraph 版谷子黄酮候选标记推荐 workflow
 
+适用读者：需要运行、调试或扩展 LangGraph flavonoid marker workflow 的同学。  
+阅读目标：理解 LangGraph node 设计、输出文件、本地 LLM Reviewer 接入和安全边界。
+
 ## 1. 模块定位
 
 本模块是现有 Flavonoid Marker Recommendation 的并行 LangGraph workflow。它把当前规则化 DeepRare-like lightweight agents 包装为 LangGraph nodes，用于展示开源智能体编排框架下的多步骤分析流程。

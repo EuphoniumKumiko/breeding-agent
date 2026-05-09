@@ -1,8 +1,13 @@
 # LLM-ready Agent Interface 设计说明
 
+适用读者：准备改 Agent、接本地模型、写 LangGraph node 或维护 Deep Agents POC 的同学。  
+阅读目标：理解当前 Agent 接口、context、prompt、fallback，以及本地 LLM Reviewer 已接入后的边界。
+
 ## 1. 当前定位
 
-当前 flavonoid marker agent layer 仍以规则化实现为默认执行路径，不调用外部 API，不接真实大模型 SDK。LLM-ready interface 已把输入、输出、prompt 模板和 fallback 规则整理清楚，并已被 LangGraph 主线 workflow 和 Deep Agents POC 复用。真实 OpenAI / 本地开源大模型接入仍是下一阶段工作。
+当前 flavonoid marker agent layer 仍以规则化实现为默认执行路径，不调用外部 API，不接真实大模型 SDK。LLM-ready interface 已把输入、输出、prompt 模板和 fallback 规则整理清楚，并已被 LangGraph 主线 workflow 和 Deep Agents POC 复用。
+
+当前实现已完成一个受控本地 LLM 接入：LangGraph workflow 的 `ReviewerAgent` 可选调用 OpenAI-compatible local backend。该接入只做审阅增强，输出经过 `output_guard` 和 `FinalQAAgent`，不直接生成 SNP/InDel/KASP/CAPS 结论。
 
 生产路径仍然是 deterministic rule-based fallback：
 
@@ -108,18 +113,18 @@ src/breeding_agent/agents/context_builder.py
 
 ## 7. 未来接入方式
 
-未来如果接 OpenAI 或本地模型，推荐做法：
+未来如果继续扩展 OpenAI-compatible 或其他本地模型，推荐做法：
 
 1. 保留当前 `RuleBasedAgent` 作为 fallback。
 2. 新增独立 adapter，把 `AgentInput` 转成模型请求，把模型输出解析为 `AgentOutput`。
 3. adapter 失败、超时、输出缺少硬性字段或违反限制时，丢弃模型结果并使用规则版输出。
 4. 模型输出进入报告前仍必须经过 `ReviewerAgent` 和 `FinalQAAgent`。
 
-LangGraph 已作为主线开源智能体编排框架接入：它只把现有 agent 节点化，不改变 evidence schema、报告 QA、CLI 参数或规则 fallback。Deep Agents 已有并行 POC，用于验证更高层 harness 接入；它不替代 LangGraph。两者当前都不调用真实 LLM。
+LangGraph 已作为主线开源智能体编排框架接入：它只把现有 agent 节点化，不改变 evidence schema、报告 QA、CLI 参数或规则 fallback。Deep Agents 已有并行 POC，用于验证更高层 harness 接入；它不替代 LangGraph。当前只有 ReviewerAgent 可选调用本地 LLM。
 
-## 8. 当前不接真实大模型的原因
+## 8. 为什么当前只受控接入 ReviewerAgent
 
-当前任务目标是科研可复现 workflow。真实模型调用会带来网络、权限、版本、成本和不可重复输出问题；也可能引入伪造 DOI、伪造 SNP/InDel 位点或过度解释 LowQual / preliminary screening 的风险。因此当前只完成 interface、prompt、context、LangGraph 编排和 Deep Agents POC；ReviewerAgent + Ollama/Qwen 或其他本地开源大模型 adapter 需要单独阶段接入和评审。
+当前任务目标是科研可复现 workflow。模型调用会带来网络、权限、版本、成本和不可重复输出问题；也可能引入伪造 DOI、伪造 SNP/InDel 位点或过度解释 LowQual / preliminary screening 的风险。因此当前只允许 ReviewerAgent 做本地 LLM 审阅增强，并保留规则 fallback。ValidationAgent / LiteratureAgent 的 LLM 增强属于后续规划。
 
 ## 9. Fallback 意义
 

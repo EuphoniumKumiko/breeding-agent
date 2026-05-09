@@ -1,6 +1,7 @@
 # breeding-agent 代码阅读指南
 
-本文面向第一次接手项目的同学，目标是帮助你从入口一路读到 workflow、report、QA 和测试，而不是只看零散文件。
+适用读者：第一次接手项目、需要从入口一路读到 workflow / agent / report / QA / Gradio 的同学。  
+阅读目标：建立阅读顺序，避免只看零散文件；快速定位普通 workflow、LangGraph、Deep Agents POC、本地 LLM Reviewer 和 Promoter scaffold。
 
 ## 推荐阅读顺序
 
@@ -11,6 +12,8 @@
 1. `AGENTS.md`
 2. `docs/project_onboarding.md`
 3. `docs/architecture_overview.md`
+4. `docs/developer/codebase_map.md`
+5. `docs/developer/business_logic_by_file.md`
 
 重点理解：
 
@@ -21,12 +24,16 @@
 - 不能伪造 SNP/InDel 位点。
 - `data/private/` 和 `outputs/` 不能提交。
 
-### 第 2 步：读两个 CLI 入口
+### 第 2 步：读主要 CLI 入口
 
 先读：
 
 - `src/breeding_agent/cli/deg.py`
 - `src/breeding_agent/cli/flavonoid_markers.py`
+- `src/breeding_agent/cli/flavonoid_markers_graph.py`
+- `src/breeding_agent/cli/flavonoid_markers_deepagents.py`
+- `src/breeding_agent/cli/genomics_variants.py`
+- `src/breeding_agent/cli/promoter_design.py`
 
 这两个文件最短，最适合理解参数如何进入 workflow。
 
@@ -44,6 +51,9 @@
 2. `src/breeding_agent/workflows/metabolomics_evidence.py`
 3. `src/breeding_agent/workflows/genomics_region.py`
 4. `src/breeding_agent/workflows/flavonoid_marker_aggregation.py`
+5. `src/breeding_agent/workflows/flavonoid_marker_langgraph.py`
+6. `src/breeding_agent/workflows/flavonoid_marker_deepagents.py`
+7. `src/breeding_agent/workflows/promoter_design.py`
 
 workflow 是项目的编排层，负责：
 
@@ -67,6 +77,8 @@ RNA-seq DEG 相关：
 
 - `src/breeding_agent/modules/metabolomics/metabolomics_evidence.py`
 - `src/breeding_agent/modules/genomics/genomics_region.py`
+- `src/breeding_agent/modules/genomics/variant_calling.py`
+- `src/breeding_agent/modules/promoter/promoter_task_schema.py`
 
 黄酮标记推荐：
 
@@ -74,6 +86,9 @@ RNA-seq DEG 相关：
 - `src/breeding_agent/integration/flavonoid_marker_package_importer.py`
 - `src/breeding_agent/integration/flavonoid_marker_aggregator.py`
 - `src/breeding_agent/agents/`
+- `src/breeding_agent/graphs/`
+- `src/breeding_agent/llm/`
+- `src/breeding_agent/deepagents/`
 
 ### 第 5 步：读报告和 QA
 
@@ -113,11 +128,15 @@ QA 文件：
 | `src/breeding_agent/cli/flavonoid_markers.py` | 黄酮标记推荐 CLI 入口 |
 | `src/breeding_agent/workflows/flavonoid_marker_aggregation.py` | 黄酮标记 aggregation workflow |
 | `src/breeding_agent/agents/flavonoid_central_host.py` | DeepRare-like lightweight agent 编排 |
+| `src/breeding_agent/graphs/flavonoid_marker_graph.py` | LangGraph 节点编排 |
+| `src/breeding_agent/llm/executor.py` | 本地 LLM Reviewer 调用和 fallback |
+| `src/breeding_agent/llm/output_guard.py` | LLM 输出安全检查 |
 | `src/breeding_agent/integration/flavonoid_marker_aggregator.py` | 聚合 evidence 为候选标记表 |
 | `src/breeding_agent/integration/flavonoid_marker_qa.py` | 规则 QA |
 | `src/breeding_agent/modules/metabolomics/metabolomics_evidence.py` | 代谢组 evidence table 处理 |
 | `src/breeding_agent/modules/genomics/genomics_region.py` | 基因组区域和 marker readiness 处理 |
 | `src/breeding_agent/web/gradio_app.py` | Gradio 展示层 |
+| `docs/developer/workflow_tracing_guide.md` | CLI 到报告的调用链 |
 | `tests/` | 当前行为的安全网 |
 
 ## 从 CLI 追踪到 workflow

@@ -1,5 +1,8 @@
 # Transcriptomics DEG 模块导读
 
+适用读者：维护 RNA-seq DEG reproduction workflow 或 transcriptomics evidence 的同学。  
+阅读目标：理解 DEG workflow 的输入输出、R 脚本边界和不要轻易修改的地方。
+
 ## 1. 模块作用
 
 Transcriptomics DEG 模块用于从本地 BAM 和 GFF 输入复现 mini RNA-seq 差异表达分析。它不是单纯跑 R 脚本，而是一个完整 workflow：

@@ -1,5 +1,8 @@
 # Testing and Validation 导读
 
+适用读者：准备提交代码、补测试或确认当前行为没有回归的同学。  
+阅读目标：理解测试覆盖范围、常用命令和发布前检查边界。
+
 ## 1. 模块作用
 
 本文件说明当前项目如何做基本验证。它适合每次改代码或文档后做提交前检查，也适合新人理解测试覆盖了哪些行为。
@@ -9,6 +12,7 @@
 - Flavonoid marker QA 规则。
 - Flavonoid lightweight agent layer。
 - LLM-ready Agent Interface、prompt templates 和 context builder。
+- 本地 OpenAI-compatible LLM Reviewer adapter、`enable_thinking=false`、output_guard 和 fallback。
 - Genomics Candidate Variant Calling MVP 与 variant evidence integration。
 - LangGraph workflow 和 optional dependency 友好提示。
 - Deep Agents POC 和 optional dependency 友好提示。
@@ -67,6 +71,7 @@ tests/
 - `test_langgraph_flavonoid_workflow.py`：验证 LangGraph state、trace reports、optional dependency 和真实 graph run 分支。
 - `test_deepagents_poc.py`：验证 Deep Agents POC trace / summary / decision table、optional dependency 和旧 CLI 不受影响。
 - `test_promoter_design_scaffold.py`：验证 Promoter Design scaffold 不生成伪造启动子序列。
+- `test_llm_reviewer_agent.py`：验证本地 LLM Reviewer config、adapter payload、output_guard、empty content fallback 和 LangGraph state 开关传递。
 
 ## 3. 如何运行 unittest
 

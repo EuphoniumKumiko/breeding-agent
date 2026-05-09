@@ -1,5 +1,8 @@
 # Metabolomics Evidence 模块导读
 
+适用读者：维护 Metabolomics Module 或需要理解学长数据包代谢组 evidence 的同学。  
+阅读目标：明确当前模块读取已有结果表，不做完整原始质谱重分析。
+
 ## 1. 模块作用
 
 Metabolomics Evidence 模块用于读取学长 mini 数据包中已经整理好的代谢组结果表，生成适合 Gradio 展示和报告汇报的 evidence analysis 输出。

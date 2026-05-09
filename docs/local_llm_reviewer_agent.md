@@ -1,5 +1,8 @@
 # 本地 OpenAI-compatible ReviewerAgent 接入说明
 
+适用读者：需要复现本地 LM Studio / Qwen 接入、调试 LLM Reviewer 或检查 Gradio 状态展示的同学。  
+阅读目标：明确本地 LLM Reviewer 的配置、调用方式、Gradio 展示、安全边界和 fallback 行为。
+
 ## 1. 定位
 
 本功能只增强 LangGraph flavonoid marker workflow 中的 `ReviewerAgent`。默认不开启；不传 `--use-llm-reviewer` 时 workflow 完全不请求本地模型。
@@ -80,5 +83,5 @@ LangGraph 的 `graph_trace.json`、`node_decision_table.tsv` 和 `langgraph_summ
 - 只增强 `reviewer_agent_node`。
 - 不改变 aggregation、variant evidence、marker recommendation 或 QA 业务逻辑。
 - 不接入真实外部 LLM 服务。
-- 不修改 Gradio。
+- Gradio 只展示状态和传递 config path，不读取配置内容。
 - 不替代人工审阅和实验验证。

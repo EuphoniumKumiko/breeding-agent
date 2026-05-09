@@ -1,5 +1,8 @@
 # Genomics Candidate Variant Calling MVP 使用说明
 
+适用读者：需要运行候选区域变异 calling、查看 PASS/LowQual 或接入 variant evidence 的同学。  
+阅读目标：明确 Candidate Variant Calling MVP 的输入输出、KASP/CAPS preliminary screening 和 WGS/GBS 边界。
+
 ## 模块定位
 
 `genomics_variant_calling` 是一个独立的候选区域 SNP/InDel calling MVP。它基于学长 mini 数据包中的 BAM、reference genome 和 candidate regions，在候选区域内运行 `samtools` / `bcftools`，并把实际 VCF 中存在的位点整理为后续 KASP/CAPS 设计的候选表。

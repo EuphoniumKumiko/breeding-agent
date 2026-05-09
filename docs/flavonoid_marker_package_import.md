@@ -1,5 +1,8 @@
 # 谷子黄酮标记 mini 数据包导入说明
 
+适用读者：需要从学长 mini 数据包生成 flavonoid marker evidence 的同学。  
+阅读目标：理解数据包文件、evidence 转换输出和不伪造 DOI / SNP/InDel 的边界。
+
 ## 数据包是什么
 
 学长提供的 `flavonoid_marker_mini_5genes_50kb` 是一个谷子黄酮标记 mini 数据和预处理结果包。它用于演示如何把转录组、代谢组、注释和候选变异相关输入整理成 flavonoid marker aggregation 可以读取的 evidence 文件。

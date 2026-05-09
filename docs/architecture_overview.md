@@ -1,5 +1,8 @@
 # breeding-agent 架构总览
 
+适用读者：需要理解项目整体结构、分层边界和当前实现状态的新同学。  
+阅读目标：掌握生信处理层、evidence 层、Agent 层、LangGraph、Deep Agents POC、本地 LLM Reviewer 和 Gradio 的关系。
+
 ## 项目定位
 
 `breeding-agent` 是一个面向谷子多组学育种分析的本地可复现项目。当前能力不再只是 RNA-seq DEG demo，而是覆盖生信数据处理层和智能体聚合分析层：
@@ -8,6 +11,7 @@
 - 谷子黄酮候选标记推荐：基于 transcriptomics、metabolomics、annotation、literature、genome variant 和可选 candidate variant calling evidence，给出 SNP/InDel/KASP/CAPS 候选标记类型建议。
 - Genomics Candidate Variant Calling MVP：生成真实候选区域 SNP/InDel、PASS/LowQual 质量分层，以及 KASP/CAPS preliminary screening 表。
 - 智能体聚合分析层：LLM-ready rule agents、LangGraph 主线多智能体 workflow、Deep Agents POC。
+- 本地 LLM Reviewer：通过 OpenAI-compatible local backend 只增强 LangGraph `ReviewerAgent`，输出经过 output_guard 和 FinalQAAgent。
 - Promoter Design scaffold：定义启动子设计任务、schema、数据盘点和占位 workflow/CLI，不训练模型、不生成真实启动子序列。
 
 新人应优先阅读：
@@ -47,7 +51,8 @@
 - 最终 KASP 标记开发、CAPS 酶切方案设计、WGS/GBS 群体变异检测和大群体基因型-黄酮含量关联验证：未完成。
 - 基于大群体基因型和黄酮含量的关联验证：计划中。
 - 外部文献 API 或 LLM 文献检索：未接入，当前只读取已有 `literature_evidence.tsv`。
-- 本地开源大模型接入：未完成。ReviewerAgent + Ollama/Qwen 是下一阶段方案。
+- 本地 OpenAI-compatible LLM ReviewerAgent：已接入 LangGraph reviewer node，当前真实运行可显示 `llm_used=true`、`guard_passed=true`、`qa_check.json passed=true`。它只做审阅增强，不生成 SNP/InDel/KASP/CAPS 结论。
+- 更多 Agent 的 LLM 接入：未完成。ValidationAgent / LiteratureAgent 是后续规划。
 - Promoter generator：未完成。当前只有 scaffold，不训练模型、不生成真实启动子序列。
 
 ## 整体数据流
@@ -111,7 +116,24 @@ outputs/flavonoid_marker_from_package/evidence/*.tsv
   -> outputs/flavonoid_marker_langgraph/
 ```
 
-LangGraph 在本项目中是当前主线开源智能体编排框架，只负责 workflow / agent graph 编排，不负责模型推理。当前不接真实大模型、不接本地开源模型、不接 OpenAI SDK。Deep Agents 已有并行 POC，用于验证未来更高层 harness 接入，但不替代 LangGraph。
+LangGraph 在本项目中是当前主线开源智能体编排框架，主要负责 workflow / agent graph 编排。默认运行仍是规则化 agents；只有显式启用 `--use-llm-reviewer` 时，`reviewer_agent_node` 会调用本地 OpenAI-compatible LLM 做审阅增强。Deep Agents 已有并行 POC，用于验证未来更高层 harness 接入，但不替代 LangGraph。
+
+### LangGraph + 本地 LLM Reviewer 数据流
+
+```text
+cli/flavonoid_markers_graph.py --use-llm-reviewer
+  -> workflows/flavonoid_marker_langgraph.py
+  -> graphs/flavonoid_marker_graph.py:reviewer_agent_node
+  -> agents/flavonoid_reviewer_agent.py 规则审阅
+  -> llm/executor.py
+  -> llm/openai_compatible_adapter.py
+  -> Windows LM Studio / Qwen3.5-9B
+  -> llm/output_guard.py
+  -> FinalQAAgent
+  -> graph_trace + node_decision_table + qa_check.json
+```
+
+本地 LLM Reviewer 只增强 ReviewerAgent，不直接生成 SNP/InDel/KASP/CAPS 结论；失败、空内容或 guard 不通过时 fallback 到规则版 ReviewerAgent。请求体必须传递 `chat_template_kwargs.enable_thinking=false`。
 
 ### Deep Agents POC 数据流
 
@@ -244,6 +266,7 @@ Deep Agents 是 optional dependency。没有安装时，新 CLI 给出清晰提�
   - 当前使用顶部 `gr.Tab` 页面结构。
   - 包含 `Transcriptomics DEG Module`、`Metabolomics Module`、`Genomics / GWAS Module`、`Integration & Recommendation`、`谷子黄酮候选标记推荐` 五个 Tab。
   - 只接收本地路径，不上传 BAM/FASTA/代谢组大文件。
+  - 黄酮 Tab 的 LangGraph 小节已展示 Use LLM Reviewer、LLM Config Path 和 LLM Reviewer Status。
 
 ## 每个模块的输入和输出
 
@@ -382,7 +405,7 @@ Gradio 负责本地页面展示和触发已有入口
 - KASP/CAPS 表只是 preliminary screening，不是最终引物或酶切方案。
 - 当前文献 evidence 只来自已有 `literature_evidence.tsv`，不做外部 API 检索。
 - 默认 flavonoid marker aggregation 是规则版 workflow，不调用 LLM。
-- LangGraph 是主线开源智能体编排入口，当前仍不调用真实 LLM、本地开源模型或外部 API。
+- LangGraph 是主线开源智能体编排入口；默认不调用 LLM，显式启用时只允许 ReviewerAgent 调用本地 OpenAI-compatible LLM。
 - Deep Agents POC 已实现并真实跑通，但只是并行 POC，不替代 LangGraph。
 - Promoter Design 当前只是 scaffold，不训练模型、不生成真实启动子序列。
 

@@ -1,5 +1,8 @@
 # AGENTS.md
 
+适用读者：Codex、后续接手开发的同学、并行开发 Agent / workflow / Gradio 的协作者。  
+阅读目标：明确当前项目状态、硬性业务要求、禁止改动范围、LLM Reviewer 边界和提交前检查规则。
+
 This repository is the `breeding-agent` project for reproducible crop multi-omics breeding workflows. It now includes RNA-seq DEG reproduction, foxtail millet flavonoid marker recommendation, Genomics Candidate Variant Calling MVP, variant evidence integration, LLM-ready rule agents, a LangGraph workflow, a Deep Agents POC, Gradio display pages, and a Promoter Design scaffold.
 
 ## Project Scope
@@ -7,7 +10,8 @@ This repository is the `breeding-agent` project for reproducible crop multi-omic
 - Research crop: 谷子。
 - Existing bioinformatics workflows: RNA-seq DEG reproduction, transcriptomics/metabolomics/annotation/literature evidence aggregation, Genomics Candidate Variant Calling MVP, and optional variant evidence integration.
 - Implemented flavonoid marker task: 根据转录组、代谢组、基因组、功能注释、文献和可选 variant calling evidence，给出可开发标记类型建议，例如 SNP/InDel/KASP/CAPS，并说明还需要哪些验证。
-- Agent orchestration: LLM-ready rule agents are available; LangGraph is the main open-source workflow orchestration path; Deep Agents is a parallel POC. Current default runs do not call real LLMs or external APIs.
+- Agent orchestration: LLM-ready rule agents are available; LangGraph is the main open-source workflow orchestration path; Deep Agents is a parallel POC. Current default runs do not call LLMs or external APIs.
+- Local LLM Reviewer: implemented for LangGraph `ReviewerAgent` only through an OpenAI-compatible local backend. It passes `chat_template_kwargs.enable_thinking=false`, uses output guard and FinalQAAgent, and must fallback to rule-based ReviewerAgent when model output fails.
 - Promoter Design: scaffold only. It defines task schema, data inventory, placeholder workflow/CLI outputs, and validation boundaries; it does not train a promoter model or generate real promoter sequences.
 - Required biological conclusion text for flavonoid marker reports and onboarding docs: 优先围绕 Si9g04210.1、Si5g31340.1、Si9g34380.1 开发候选 SNP/InDel/KASP 标记，再用更大群体的基因型和黄酮含量数据验证关联。
 
@@ -75,6 +79,11 @@ These values are package-derived evidence, not final breeding validation.
 - Do not modify `workflows/rnaseq_deg/R/differential_expression_limma_voom.R` unless the task explicitly asks for R workflow changes.
 - Do not change `featureCounts -g Parent` behavior unless the annotation strategy is explicitly changed.
 - Do not weaken validation, provenance, or reproducibility behavior.
+- Do not modify Genomics Variant Calling core calling commands unless explicitly requested.
+- Do not modify Metabolomics workflow behavior unless explicitly requested.
+- Do not modify Promoter Design scaffold into a real generator unless explicitly requested.
+- Do not modify Gradio layout in broad refactors; keep current top-level `gr.Tab` structure unless the task explicitly asks otherwise.
+- Do not commit or stage `configs/llm.local.yaml`.
 
 ## Where To Add Flavonoid Marker Work
 
@@ -88,6 +97,38 @@ Prefer these areas:
 - `docs/`
 
 Do not put flavonoid marker aggregation logic inside the RNA-seq DEG workflow.
+
+## Multi-agent Parallel Development Rules
+
+- Prefer one feature branch per Agent or workflow slice.
+- Keep Agent business logic in `src/breeding_agent/agents/`.
+- Keep orchestration logic in `src/breeding_agent/graphs/` or `src/breeding_agent/workflows/`.
+- Keep LLM transport / guard logic in `src/breeding_agent/llm/`.
+- Keep Gradio as display and workflow trigger only; do not move core evidence, QA, or marker logic into `web/gradio_app.py`.
+- New Agent work should define or reuse `AgentInput` / `AgentOutput`, update `context_builder`, add LangGraph trace fields, add tests, and update docs.
+- `FinalQAAgent` should remain deterministic and rule-based.
+
+## Local LLM Reviewer Boundary
+
+Current implementation:
+
+- Only LangGraph `reviewer_agent_node` may call the local OpenAI-compatible LLM.
+- The local model is used for reviewer note enhancement only.
+- It must not directly generate SNP/InDel/KASP/CAPS conclusions.
+- It must not fabricate DOI values or variant coordinates.
+- It must preserve LowQual, preliminary KASP/CAPS, and WGS/GBS limitation statements.
+- Model output must pass `output_guard` and then `FinalQAAgent`.
+- Failure, timeout, empty content, disabled config, or guard failure must fallback to the rule-based ReviewerAgent.
+- Gradio may show `llm_reviewer_enabled`, `llm_used`, `fallback_used`, `model`, `guard_passed`, and `fallback_reason`, but must not show local config file contents.
+
+## Promoter Design Boundary
+
+Promoter Design is currently scaffold only:
+
+- It may define task schema, data inventory, placeholder outputs, and validation plan.
+- It must not train GAN / diffusion / DNA language models in the current scaffold.
+- It must not generate or claim validated synthetic promoter sequences.
+- It must not be described as a ready-to-use promoter design model.
 
 ## Data And Git Safety
 
@@ -145,6 +186,17 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
   --evidence-dir outputs/flavonoid_marker_from_package/evidence \
   --outdir outputs/flavonoid_marker_langgraph \
   --variant-calling-dir outputs/genomics_variant_calling
+```
+
+Run LangGraph with local LLM Reviewer:
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_llm_real \
+  --variant-calling-dir outputs/genomics_variant_calling \
+  --use-llm-reviewer \
+  --llm-config configs/llm.local.yaml
 ```
 
 Run the Deep Agents POC:
@@ -209,3 +261,16 @@ python3 -m py_compile <changed_python_files>
 ```
 
 If only Markdown files changed, state that `py_compile` is not applicable because no Python files changed.
+
+For release-style changes, also consult:
+
+```text
+docs/developer/testing_and_release_checklist.md
+```
+
+Before staging, verify:
+
+```bash
+git status --short --untracked-files=all
+git diff -- src/breeding_agent/workflows/rnaseq_deg.py workflows/rnaseq_deg/R/differential_expression_limma_voom.R
+```

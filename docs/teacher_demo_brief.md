@@ -1,5 +1,8 @@
 # Multi-omics Breeding Agent Demo 汇报简报
 
+适用读者：准备给老师或学长汇报当前 demo 的同学。  
+阅读目标：用简短材料说明当前完成内容、演示路径和未完成边界。
+
 ## 当前任务背景
 
 当前项目已经从最初的 mini RNA-seq DEG 复现 Demo，扩展为谷子多组学育种智能体 Demo。主线包括生信数据处理层和智能体聚合分析层：
@@ -127,7 +130,7 @@ Run DEG Analysis
 - 不伪造启动子序列。
 - KASP/CAPS 表只是 preliminary screening，不是最终引物或酶切方案。
 - Candidate-region variant calling 不能替代 WGS/GBS 群体变异检测。
-- 当前没有真实 LLM 推理；本地开源大模型接入是下一阶段。
+- 当前本地 LLM 只增强 LangGraph ReviewerAgent，不直接生成 SNP/InDel/KASP/CAPS 结论；更多 Agent 的模型接入是后续规划。
 - Promoter Design 当前只是 scaffold，不是启动子生成模型。
 
 ## 后续计划

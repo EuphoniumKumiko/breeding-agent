@@ -1,5 +1,8 @@
 # Deep Agents Flavonoid Marker POC
 
+适用读者：需要理解 Deep Agents POC 与 LangGraph 主线关系的同学。  
+阅读目标：明确 Deep Agents 只是并行 POC，不替代 LangGraph，不调用真实 LLM。
+
 ## Purpose
 
 This POC validates that `breeding-agent` can expose the flavonoid marker recommendation task through a Deep Agents-style harness. It is intentionally parallel to the existing rule-based workflow and the LangGraph workflow.

@@ -1,5 +1,8 @@
 # Genomics Region 模块导读
 
+适用读者：维护 Genomics / GWAS Tab、region analysis 或 marker readiness 输出的同学。  
+阅读目标：理解 region 模块与 candidate variant calling 的边界。
+
 ## 1. 模块作用
 
 Genomics Region 模块用于读取学长 mini 数据包中的基因组区域、功能注释和目标基因相关表，生成候选区域分析和 marker readiness 输出。

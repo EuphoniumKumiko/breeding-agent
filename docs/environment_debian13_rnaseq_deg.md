@@ -1,5 +1,8 @@
 # Debian 13 RNA-seq DEG 环境与复现记录
 
+适用读者：需要复现 RNA-seq DEG 运行环境或排查 Debian 工具依赖的同学。  
+阅读目标：记录当前 DEG 环境配置，不代表黄酮 LangGraph / LLM / Promoter 全部环境说明。
+
 ## 1. 环境信息
 
 - Host OS: Windows
