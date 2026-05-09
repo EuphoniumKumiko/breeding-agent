@@ -7,6 +7,7 @@ from breeding_agent.deepagents.flavonoid_deepagents_poc import (
     render_deepagents_summary,
     require_deepagents,
     run_deepagents_poc,
+    summarize_variant_evidence,
     write_deepagents_artifacts,
 )
 
@@ -17,5 +18,6 @@ __all__ = [
     "render_deepagents_summary",
     "require_deepagents",
     "run_deepagents_poc",
+    "summarize_variant_evidence",
     "write_deepagents_artifacts",
 ]

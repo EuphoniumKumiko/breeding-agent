@@ -1,3 +1,4 @@
+import csv
 import importlib.util
 import json
 import tempfile
@@ -16,6 +17,7 @@ from breeding_agent.deepagents.flavonoid_deepagents_poc import (
     build_deepagents_trace,
     render_deepagents_summary,
     require_deepagents,
+    summarize_variant_evidence,
     write_deepagents_artifacts,
 )
 from breeding_agent.workflows.flavonoid_marker_deepagents import (
@@ -93,15 +95,16 @@ class DeepAgentsPOCTest(unittest.TestCase):
         self.assertIn("Si9g04210.1", context["evidence_by_gene"])
 
     def test_trace_summary_and_artifact_writers_are_deterministic(self):
-        agent_result = _mock_agent_result()
-        trace = build_deepagents_trace(agent_result)
-        decision_rows = build_deepagents_decision_rows(trace)
-        summary = render_deepagents_summary(
-            agent_result=agent_result,
-            trace=trace,
-            decision_rows=decision_rows,
-        )
         with tempfile.TemporaryDirectory() as tmpdir:
+            variant_dir = _create_mock_variant_calling_dir(Path(tmpdir))
+            agent_result = _mock_agent_result(variant_dir)
+            trace = build_deepagents_trace(agent_result)
+            decision_rows = build_deepagents_decision_rows(trace)
+            summary = render_deepagents_summary(
+                agent_result=agent_result,
+                trace=trace,
+                decision_rows=decision_rows,
+            )
             artifacts = write_deepagents_artifacts(
                 outdir=Path(tmpdir),
                 trace=trace,
@@ -111,8 +114,36 @@ class DeepAgentsPOCTest(unittest.TestCase):
             for path in artifacts.values():
                 self.assertTrue(Path(path).exists(), path)
 
+            final_qa_rows = [
+                row for row in decision_rows if row["step_name"] == "final_qa_agent"
+            ]
+            variant_summary = summarize_variant_evidence(agent_result)
+
+            self.assertEqual(len(final_qa_rows), 1)
+            self.assertIs(variant_summary["variant_calling_enabled"], True)
+            self.assertIs(
+                variant_summary["gene_level_variant_evidence_integrated"],
+                True,
+            )
+            self.assertEqual(variant_summary["candidate_variant_rows"], 2)
+            self.assertEqual(variant_summary["kasp_candidate_rows"], 1)
+            self.assertEqual(variant_summary["caps_candidate_rows"], 1)
+            self.assertEqual(
+                "\n".join(
+                    "\t".join(row[column] for column in row)
+                    for row in decision_rows
+                ).count("final_qa_agent"),
+                1,
+            )
         self.assertIn("deepagents_harness_start", json.dumps(trace, ensure_ascii=False))
         self.assertIn("marker_recommendation_agent", summary)
+        self.assertIn("## Variant Evidence Integration", summary)
+        self.assertIn("variant_calling_enabled=true", summary)
+        self.assertIn("gene_level_variant_evidence_integrated=true", summary)
+        self.assertIn("candidate_variant_rows=2", summary)
+        self.assertIn("raw candidate variant rows are not expanded", summary)
+        self.assertIn("variant_calling_enabled", decision_rows[0])
+        self.assertEqual(decision_rows[0]["variant_calling_enabled"], "true")
         self.assertIn("不伪造 SNP/InDel", summary)
         self.assertIn("不伪造 DOI", summary)
         self.assertIn("LowQual 不得作为优先推荐", summary)
@@ -169,6 +200,21 @@ class DeepAgentsPOCTest(unittest.TestCase):
                 "manifest",
             ]:
                 self.assertTrue(Path(outputs[key]).exists(), outputs[key])
+            decision_text = Path(outputs["deepagents_decision_table"]).read_text(
+                encoding="utf-8"
+            )
+            summary_text = Path(outputs["deepagents_summary"]).read_text(
+                encoding="utf-8"
+            )
+            decision_rows = list(csv.DictReader(
+                decision_text.splitlines(),
+                delimiter="\t",
+            ))
+            final_qa_rows = [
+                row for row in decision_rows if row["step_name"] == "final_qa_agent"
+            ]
+            self.assertEqual(len(final_qa_rows), 1)
+            self.assertIn("## Variant Evidence Integration", summary_text)
             self.assertIs(result["qa_result"]["passed"], True)
 
 
@@ -181,7 +227,10 @@ def _existing_variant_dir() -> Path | None:
     return path if path.exists() else None
 
 
-def _mock_agent_result() -> dict[str, object]:
+def _mock_agent_result(variant_calling_dir: Path | None = None) -> dict[str, object]:
+    variant_calling_dir_text = (
+        str(variant_calling_dir) if variant_calling_dir else "outputs/genomics_variant_calling"
+    )
     return {
         "candidate_rows": [
             {
@@ -193,9 +242,26 @@ def _mock_agent_result() -> dict[str, object]:
         "agent_context": {
             "candidate_rows": [{"gene_id": "Si9g04210.1"}],
             "literature_evidence": [{"doi": "10.3390/life11060578"}],
-            "variant_evidence": [],
+            "variant_calling_evidence": [
+                {
+                    "gene_id": "Si9g04210.1",
+                    "variant_evidence_status": "no_called_variant_in_current_mini_calling",
+                }
+            ],
+            "variant_calling": {
+                "dir": variant_calling_dir_text,
+                "loaded": True,
+            },
         },
         "agent_outputs": [
+            {
+                "agent_name": "literature_agent",
+                "summary": "Read literature evidence rows.",
+                "evidence_used": ["literature_evidence.tsv"],
+                "warnings": [],
+                "limitations": ["No external literature API is called."],
+                "structured_payload": {"passed": True},
+            },
             {
                 "agent_name": "marker_recommendation_agent",
                 "summary": "Generated marker recommendations.",
@@ -215,8 +281,109 @@ def _mock_agent_result() -> dict[str, object]:
                 "limitations": ["QA uses deterministic text checks."],
                 "structured_payload": {"passed": True},
             },
+            {
+                "agent_name": "final_qa_agent",
+                "summary": "Final QA passed=True after final report render.",
+                "evidence_used": ["final_report_text"],
+                "warnings": [],
+                "limitations": ["QA uses deterministic text checks."],
+                "structured_payload": {"passed": True},
+            },
         ],
         "qa_result": {"passed": True},
         "warnings": [],
-        "variant_calling_dir": "outputs/genomics_variant_calling",
+        "variant_calling_dir": variant_calling_dir_text,
     }
+
+
+def _create_mock_variant_calling_dir(base_dir: Path) -> Path:
+    variant_dir = base_dir / "genomics_variant_calling"
+    tables_dir = variant_dir / "tables"
+    tables_dir.mkdir(parents=True)
+    _write_tsv(
+        tables_dir / "candidate_variants.tsv",
+        [
+            "chrom",
+            "pos",
+            "ref",
+            "alt",
+            "variant_type",
+            "qual",
+            "filter",
+            "depth",
+            "source_vcf",
+            "nearest_or_target_gene",
+            "marker_implication",
+        ],
+        [
+            {
+                "chrom": "chr1",
+                "pos": "10",
+                "ref": "A",
+                "alt": "G",
+                "variant_type": "SNP",
+                "qual": "60",
+                "filter": "PASS",
+                "depth": "12",
+                "source_vcf": "mock.vcf.gz",
+                "nearest_or_target_gene": "Si5g31340.1",
+                "marker_implication": "mock",
+            },
+            {
+                "chrom": "chr1",
+                "pos": "20",
+                "ref": "C",
+                "alt": "T",
+                "variant_type": "SNP",
+                "qual": "9",
+                "filter": "LowQual",
+                "depth": "5",
+                "source_vcf": "mock.vcf.gz",
+                "nearest_or_target_gene": "Si9g34380.1",
+                "marker_implication": "mock",
+            },
+        ],
+    )
+    _write_tsv(
+        tables_dir / "kasp_candidate_sites.tsv",
+        ["chrom", "pos", "ref", "alt", "gene_id", "kasp_readiness", "reason"],
+        [
+            {
+                "chrom": "chr1",
+                "pos": "10",
+                "ref": "A",
+                "alt": "G",
+                "gene_id": "Si5g31340.1",
+                "kasp_readiness": "preliminary_pass",
+                "reason": "mock",
+            }
+        ],
+    )
+    _write_tsv(
+        tables_dir / "caps_candidate_sites.tsv",
+        ["chrom", "pos", "ref", "alt", "gene_id", "caps_status", "reason"],
+        [
+            {
+                "chrom": "chr1",
+                "pos": "10",
+                "ref": "A",
+                "alt": "G",
+                "gene_id": "Si5g31340.1",
+                "caps_status": "pass_variant_requires_enzyme_screening",
+                "reason": "mock",
+            }
+        ],
+    )
+    return variant_dir
+
+
+def _write_tsv(path: Path, fieldnames: list[str], rows: list[dict[str, str]]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=fieldnames,
+            delimiter="\t",
+            lineterminator="\n",
+        )
+        writer.writeheader()
+        writer.writerows(rows)

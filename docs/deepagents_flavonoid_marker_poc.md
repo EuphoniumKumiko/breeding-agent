@@ -60,6 +60,19 @@ outputs/flavonoid_marker_deepagents/
 
 `deepagents_trace.json` records the deterministic harness steps, context construction, rule-agent outputs, warnings, and limitations. `deepagents_decision_table.tsv` is a tabular view of the same decisions. `deepagents_summary.md` explains that the POC is not yet an LLM-powered agent run.
 
+## Variant Evidence Display
+
+When `--variant-calling-dir` is provided and the directory exists, the POC summary and decision table report:
+
+- `variant_calling_enabled=true`
+- `variant_calling_dir=<provided directory>`
+- `gene_level_variant_evidence_integrated=true` when gene-level variant evidence has been passed into the marker recommendation layer
+- `candidate_variant_rows`, `kasp_candidate_rows`, and `caps_candidate_rows` from the small TSV tables under `variant_calling_dir/tables/`
+
+The POC trace does not expand raw candidate variant rows. It records the raw table row counts and states that gene-level variant evidence is used by the marker recommendation layer. PASS / LowQual interpretation remains constrained by the upstream variant calling and marker recommendation code.
+
+The decision table intentionally shows `final_qa_agent` only once. The underlying rule workflow may check the final rendered report, but the POC display presents a single final QA decision so the flow remains easy to read.
+
 ## Evidence Rules
 
 - Do not fabricate SNP/InDel positions.
