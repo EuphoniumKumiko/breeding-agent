@@ -25,6 +25,8 @@ class FlavonoidMarkerLangGraphConfig:
     outdir: Path = Path(DEFAULT_LANGGRAPH_OUTDIR)
     variant_calling_dir: Path | None = None
     target_genes: list[str] | None = None
+    use_llm_reviewer: bool = False
+    llm_config: Path | None = None
 
 
 def run_flavonoid_marker_langgraph_task(
@@ -38,6 +40,11 @@ def run_flavonoid_marker_langgraph_task(
     variant_calling_dir = (
         config.variant_calling_dir.expanduser().resolve()
         if config.variant_calling_dir
+        else None
+    )
+    llm_config = (
+        config.llm_config.expanduser().resolve()
+        if config.llm_config
         else None
     )
     manifest_path = outdir / "manifest.json"
@@ -55,7 +62,9 @@ def run_flavonoid_marker_langgraph_task(
         "error_message": None,
         "agent_layer": {
             "mode": "langgraph_rule_based_agents",
-            "uses_llm": False,
+            "uses_llm": bool(config.use_llm_reviewer),
+            "llm_reviewer_enabled": bool(config.use_llm_reviewer),
+            "llm_config": str(llm_config) if llm_config else None,
             "uses_external_api": False,
             "uses_deep_agents": False,
             "uses_langgraph": True,
@@ -69,6 +78,8 @@ def run_flavonoid_marker_langgraph_task(
             outdir=outdir,
             variant_calling_dir=variant_calling_dir,
             target_genes=config.target_genes,
+            llm_reviewer_enabled=config.use_llm_reviewer,
+            llm_config_path=llm_config,
         )
         final_state = graph.invoke(initial_state)
         trace_outputs = write_langgraph_trace_reports(
@@ -86,6 +97,7 @@ def run_flavonoid_marker_langgraph_task(
         manifest["outputs"] = outputs
         manifest["warnings"] = final_state.get("warnings", [])
         manifest["qa_result"] = final_state.get("qa_result", {})
+        manifest["llm_reviewer"] = _llm_reviewer_metadata(final_state)
         manifest["graph_trace_nodes"] = len(final_state.get("graph_trace", []))
         manifest["end_time"] = _utc_now()
         _write_json(manifest_path, manifest)
@@ -94,6 +106,7 @@ def run_flavonoid_marker_langgraph_task(
             "final_state": final_state,
             "outputs": outputs,
             "qa_result": final_state.get("qa_result", {}),
+            "llm_reviewer": _llm_reviewer_metadata(final_state),
         }
         return result
     except Exception as exc:
@@ -142,3 +155,32 @@ def _assert_output_paths_exist(outputs: dict[str, str]) -> None:
         raise FileNotFoundError(
             "LangGraph workflow output path(s) missing: " + "; ".join(missing)
         )
+
+
+def _llm_reviewer_metadata(final_state: object) -> dict[str, object]:
+    if not isinstance(final_state, dict):
+        return {}
+    direct = final_state.get("llm_reviewer_metadata")
+    if isinstance(direct, dict):
+        return direct
+    agent_context = final_state.get("agent_context")
+    if isinstance(agent_context, dict):
+        metadata = agent_context.get("_llm_reviewer_metadata")
+        if isinstance(metadata, dict):
+            return metadata
+    for row in final_state.get("graph_trace", []):
+        if isinstance(row, dict) and row.get("node_name") == "reviewer_agent_node":
+            return {
+                key: row.get(key)
+                for key in [
+                    "llm_reviewer_enabled",
+                    "llm_used",
+                    "fallback_used",
+                    "model",
+                    "guard_passed",
+                    "fallback_reason",
+                    "guard_reasons",
+                ]
+                if key in row
+            }
+    return {}

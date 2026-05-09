@@ -17,7 +17,7 @@ Flavonoid Marker Recommendation 模块用于谷子黄酮候选标记推荐。它
 
 当前还支持可选接入 Genomics Candidate Variant Calling MVP 的真实 TSV 输出。传入 `--variant-calling-dir` 后，报告会展示每个目标基因的候选区域变异 calling 证据、PASS/LowQual 质量分层和 KASP/CAPS preliminary screening 状态。不传该参数时保持旧行为。
 
-当前 agent layer 已新增 LLM-ready interface。它只定义统一输入/输出、prompt templates、context builder 和规则 fallback，不接真实大模型 API。
+当前 agent layer 已新增 LLM-ready interface。它定义统一输入/输出、prompt templates、context builder 和规则 fallback。LangGraph workflow 现支持可选本地 OpenAI-compatible ReviewerAgent 审阅增强；默认不调用模型，且只允许 reviewer node 调用本地后端。
 
 ## 2. 学长硬性要求
 
@@ -72,6 +72,7 @@ Si9g34380.1
 | `src/breeding_agent/graphs/flavonoid_marker_graph.py` | LangGraph nodes and graph builder |
 | `src/breeding_agent/cli/flavonoid_markers_graph.py` | LangGraph workflow CLI |
 | `src/breeding_agent/reports/langgraph_trace_report.py` | graph trace / node decision reports |
+| `src/breeding_agent/llm/` | 本地 OpenAI-compatible LLM adapter、executor 和 output guard |
 | `src/breeding_agent/deepagents/flavonoid_deepagents_poc.py` | Deep Agents POC trace / summary 生成 |
 | `src/breeding_agent/workflows/flavonoid_marker_deepagents.py` | Deep Agents POC workflow wrapper |
 | `src/breeding_agent/cli/flavonoid_markers_deepagents.py` | Deep Agents POC CLI |
@@ -129,6 +130,19 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
   --outdir outputs/flavonoid_marker_langgraph \
   --variant-calling-dir outputs/genomics_variant_calling
 ```
+
+可选本地 LLM ReviewerAgent 增强：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_llm \
+  --variant-calling-dir outputs/genomics_variant_calling \
+  --use-llm-reviewer \
+  --llm-config configs/llm.local.example.yaml
+```
+
+该功能使用 OpenAI-compatible 本地后端，只增强 `ReviewerAgent`。请求体传递 `chat_template_kwargs.enable_thinking=false`。如果模型请求失败、返回空内容或 output guard 不通过，会回退到规则版 ReviewerAgent。
 
 并行 Deep Agents POC CLI：
 

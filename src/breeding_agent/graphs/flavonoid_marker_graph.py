@@ -25,6 +25,7 @@ from breeding_agent.integration.flavonoid_marker_aggregator import (
     TRANSCRIPTOME_EVIDENCE,
     aggregate_flavonoid_marker_candidates,
 )
+from breeding_agent.llm.executor import run_llm_reviewer
 from breeding_agent.reports.flavonoid_marker_report import (
     render_flavonoid_marker_report,
 )
@@ -119,6 +120,7 @@ def aggregate_candidates_node(state: FlavonoidGraphState) -> FlavonoidGraphState
 
 
 def build_agent_context_node(state: FlavonoidGraphState) -> FlavonoidGraphState:
+    prior_context = _as_mapping(state.get("agent_context", {}))
     context = build_flavonoid_agent_context(
         evidence_dir=Path(str(state["evidence_dir"])),
         candidate_rows=state.get("candidate_rows", []),
@@ -126,6 +128,9 @@ def build_agent_context_node(state: FlavonoidGraphState) -> FlavonoidGraphState:
         variant_evidence_rows=state.get("_variant_evidence_rows", []),  # type: ignore[typeddict-item]
         warnings=state.get("warnings", []),
     )
+    llm_config = _as_mapping(prior_context.get("_llm_reviewer_config", {}))
+    if llm_config:
+        context["_llm_reviewer_config"] = llm_config
     state["agent_context"] = context
     _append_trace(
         state,
@@ -210,16 +215,41 @@ def reviewer_agent_node(state: FlavonoidGraphState) -> FlavonoidGraphState:
         "validation_plan_text": state.get("validation_plan_text", ""),
         "report_text": draft_report,
     }
-    output = FlavonoidReviewerAgent().run_with_context(context)
+    reviewer = FlavonoidReviewerAgent()
+    rule_output = reviewer.run_with_context(context)
+    rule_payload = rule_output.structured_payload
+    llm_config = _llm_reviewer_config_from_context(context)
+    llm_result = run_llm_reviewer(
+        context=context,
+        llm_config_path=llm_config.get("llm_config_path"),
+        rule_reviewer_notes=str(rule_payload.get("reviewer_notes", "")),
+        enabled=bool(llm_config.get("llm_reviewer_enabled", False)),
+    )
+    llm_metadata = llm_result.to_dict()
+    context["_llm_reviewer_metadata"] = llm_metadata
+    state["agent_context"] = context
+    state["llm_reviewer_metadata"] = llm_metadata  # type: ignore[typeddict-unknown-key]
+    output = reviewer.add_llm_review(
+        rule_output,
+        llm_review_text=llm_result.content if llm_result.llm_used else "",
+        llm_metadata=llm_metadata,
+    )
     payload = output.structured_payload
     state["reviewer_notes"] = str(payload.get("reviewer_notes", ""))
     state["reviewer_warnings"] = [str(item) for item in payload.get("issues", [])]
     _add_agent_output(state, output.to_dict())
-    _append_trace_from_agent(
+    llm_summary = _llm_metadata_summary(llm_metadata)
+    _append_trace(
         state,
         node_name="reviewer_agent_node",
+        agent_name=str(output.agent_name),
         input_summary="draft report without reviewer notes",
-        output=output.to_dict(),
+        output_summary=f"{output.summary} {llm_summary}",
+        evidence_used=list(output.evidence_used),
+        warnings=list(output.warnings),
+        limitations=[*output.limitations, llm_summary],
+        passed=_passed_from_payload(payload),
+        extra_metadata=llm_metadata,
     )
     return state
 
@@ -303,13 +333,20 @@ def initial_graph_state(
     outdir: Path,
     variant_calling_dir: Path | None = None,
     target_genes: list[str] | None = None,
+    llm_reviewer_enabled: bool = False,
+    llm_config_path: Path | None = None,
 ) -> FlavonoidGraphState:
     return {
         "evidence_dir": str(evidence_dir),
         "outdir": str(outdir),
         "variant_calling_dir": str(variant_calling_dir) if variant_calling_dir else None,
         "target_genes": target_genes or list(REQUIRED_GENE_IDS),
-        "agent_context": {},
+        "agent_context": {
+            "_llm_reviewer_config": {
+                "llm_reviewer_enabled": bool(llm_reviewer_enabled),
+                "llm_config_path": str(llm_config_path) if llm_config_path else None,
+            }
+        },
         "candidate_table_path": None,
         "candidate_rows": [],
         "literature_rows": [],
@@ -321,6 +358,9 @@ def initial_graph_state(
         "graph_trace": [],
         "errors": [],
         "warnings": [],
+        "llm_reviewer_enabled": llm_reviewer_enabled,  # type: ignore[typeddict-unknown-key]
+        "llm_config_path": str(llm_config_path) if llm_config_path else None,  # type: ignore[typeddict-unknown-key]
+        "llm_reviewer_metadata": {},  # type: ignore[typeddict-unknown-key]
     }
 
 
@@ -355,21 +395,23 @@ def _append_trace(
     warnings: list[str] | None = None,
     limitations: list[str] | None = None,
     passed: bool | None = None,
+    extra_metadata: dict[str, object] | None = None,
 ) -> None:
     trace = list(state.get("graph_trace", []))
-    trace.append(
-        {
-            "node_id": len(trace) + 1,
-            "node_name": node_name,
-            "agent_name": agent_name,
-            "input_summary": input_summary,
-            "output_summary": output_summary,
-            "evidence_used": evidence_used or [],
-            "warnings": warnings or [],
-            "limitations": limitations or [],
-            "passed": passed,
-        }
-    )
+    row = {
+        "node_id": len(trace) + 1,
+        "node_name": node_name,
+        "agent_name": agent_name,
+        "input_summary": input_summary,
+        "output_summary": output_summary,
+        "evidence_used": evidence_used or [],
+        "warnings": warnings or [],
+        "limitations": limitations or [],
+        "passed": passed,
+    }
+    if extra_metadata:
+        row.update(extra_metadata)
+    trace.append(row)
     state["graph_trace"] = trace
 
 
@@ -398,6 +440,18 @@ def _rows(value: object) -> list[dict[str, str]]:
     return [row for row in value if isinstance(row, dict)]
 
 
+def _as_mapping(value: object) -> dict[str, object]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def _llm_reviewer_config_from_context(context: dict[str, object]) -> dict[str, object]:
+    config = _as_mapping(context.get("_llm_reviewer_config", {}))
+    return {
+        "llm_reviewer_enabled": bool(config.get("llm_reviewer_enabled", False)),
+        "llm_config_path": config.get("llm_config_path"),
+    }
+
+
 def _passed_from_payload(payload: object) -> bool | None:
     if not isinstance(payload, dict):
         return None
@@ -405,6 +459,21 @@ def _passed_from_payload(payload: object) -> bool | None:
     if isinstance(value, bool):
         return value
     return None
+
+
+def _llm_metadata_summary(metadata: dict[str, object]) -> str:
+    return (
+        "llm_reviewer_enabled={llm_reviewer_enabled}; llm_used={llm_used}; "
+        "fallback_used={fallback_used}; model={model}; guard_passed={guard_passed}; "
+        "fallback_reason={fallback_reason}"
+    ).format(
+        llm_reviewer_enabled=str(metadata.get("llm_reviewer_enabled", False)).lower(),
+        llm_used=str(metadata.get("llm_used", False)).lower(),
+        fallback_used=str(metadata.get("fallback_used", True)).lower(),
+        model=metadata.get("model", ""),
+        guard_passed=str(metadata.get("guard_passed", False)).lower(),
+        fallback_reason=metadata.get("fallback_reason", ""),
+    )
 
 
 def _write_json(path: Path, payload: object) -> None:

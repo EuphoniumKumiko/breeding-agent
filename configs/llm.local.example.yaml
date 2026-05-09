@@ -1,0 +1,11 @@
+enabled: false
+provider: openai_compatible
+base_url: http://192.168.1.4:1234/v1
+model: qwen/qwen3.5-9b
+temperature: 0.1
+max_tokens: 1200
+timeout_seconds: 60
+chat_template_kwargs:
+  enable_thinking: false
+enabled_agents:
+  - reviewer_agent

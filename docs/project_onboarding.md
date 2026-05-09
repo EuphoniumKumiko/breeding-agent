@@ -10,6 +10,7 @@
 - 已实现：从学长谷子黄酮标记 mini 数据包生成 aggregation evidence 的 demo 转换脚本。
 - 已实现：flavonoid marker aggregation CLI，采用规则版 workflow + DeepRare-like lightweight agent layer，整合 transcriptome、metabolome、annotation、genome variant 和 literature evidence，给出 SNP/InDel/KASP/CAPS 等可开发标记类型建议，并输出 QA 检查结果。
 - 已实现：LangGraph 版 flavonoid marker workflow，把现有规则化 agents 作为 graph nodes 编排；LangGraph 是当前主线开源智能体编排框架，也是可选依赖，不影响旧 CLI。
+- 已实现：本地 OpenAI-compatible LLM ReviewerAgent 可选增强，只接入 LangGraph workflow 的 reviewer node；默认不调用模型，失败或 guard 不通过时回退到规则版 ReviewerAgent。
 - 已实现：Deep Agents POC，复用现有 evidence、context builder 和规则化 agents，输出 trace/summary/decision table；它是并行 POC，不替代 LangGraph。
 - 已实现：Promoter Design scaffold，包含任务定义、schema、数据盘点、workflow/CLI 占位输出；它不训练模型，不生成真实启动子序列。
 - 已实现：Genomics Candidate Variant Calling MVP，基于候选区域运行 `samtools`/`bcftools`，输出真实 VCF 中存在的 SNP/InDel、KASP preliminary screening 和 CAPS screening 表。
@@ -48,6 +49,7 @@
 - LangGraph CLI：`src/breeding_agent/cli/flavonoid_markers_graph.py`
 - LangGraph graph：`src/breeding_agent/graphs/flavonoid_marker_graph.py`
 - LangGraph trace reports：`src/breeding_agent/reports/langgraph_trace_report.py`
+- 本地 LLM adapter：`src/breeding_agent/llm/`
 - Deep Agents POC CLI：`src/breeding_agent/cli/flavonoid_markers_deepagents.py`
 - Deep Agents POC workflow：`src/breeding_agent/workflows/flavonoid_marker_deepagents.py`
 - Deep Agents POC backend：`src/breeding_agent/deepagents/flavonoid_deepagents_poc.py`
@@ -427,6 +429,7 @@ outputs/flavonoid_marker_from_package/
 
 - 默认 aggregation 是规则版/模板版 workflow + DeepRare-like lightweight agent layer，不调用 LLM，不调用外部 API，也不依赖 LangGraph 或 Deep Agents。
 - LangGraph workflow 是当前主线开源智能体编排入口；旧 workflow 和旧 CLI 不依赖 LangGraph。
+- LangGraph workflow 可选启用本地 OpenAI-compatible ReviewerAgent 审阅增强；该增强只作用于 reviewer node，失败、空响应或 guard 不通过时自动回退到规则版 ReviewerAgent。
 - Deep Agents POC 已完成并可作为并行入口运行，但不替代 LangGraph。
 - 文献 DOI 只来自 `literature_evidence.tsv` 或经过人工核验的输入，不伪造 DOI。
 - 当前 mini 数据包没有最终 SNP/InDel calling 结果时，报告必须保留 `variant_status=not_called`。
@@ -434,7 +437,7 @@ outputs/flavonoid_marker_from_package/
 - 如果已经运行 Genomics Candidate Variant Calling MVP，可通过 `--variant-calling-dir outputs/genomics_variant_calling` 把真实 `candidate_variants.tsv`、`kasp_candidate_sites.tsv`、`caps_candidate_sites.tsv` 可选接入黄酮推荐报告。
 - 可选 variant evidence 接入后会展示 PASS/LowQual、SNP/InDel、KASP/CAPS preliminary screening 统计；LowQual 不应直接优先用于 KASP/CAPS，preliminary screening 不等同于最终标记设计。
 - 当前候选区域 calling 如果基于 RNA-seq BAM，不能替代 WGS/GBS 群体变异检测。
-- 后续如果需要接入 LLM，应通过明确 adapter 接入 LiteratureAgent、MarkerRecommendationAgent 或 ReviewerAgent，并保留当前规则 fallback。
+- 后续如果需要扩展更多 LLM 节点，应通过明确 adapter 接入，并保留当前规则 fallback。
 
 带可选 variant calling evidence 的 flavonoid marker CLI：
 
@@ -452,6 +455,17 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
   --evidence-dir outputs/flavonoid_marker_from_package/evidence \
   --outdir outputs/flavonoid_marker_langgraph \
   --variant-calling-dir outputs/genomics_variant_calling
+```
+
+启用本地 LLM ReviewerAgent 审阅增强的 LangGraph CLI：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_llm \
+  --variant-calling-dir outputs/genomics_variant_calling \
+  --use-llm-reviewer \
+  --llm-config configs/llm.local.example.yaml
 ```
 
 并行 Deep Agents POC CLI：

@@ -37,6 +37,17 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Optional genomics variant calling output directory.",
     )
+    parser.add_argument(
+        "--use-llm-reviewer",
+        action="store_true",
+        help="Enable optional local OpenAI-compatible LLM enhancement for ReviewerAgent only.",
+    )
+    parser.add_argument(
+        "--llm-config",
+        default=Path("configs/llm.local.example.yaml"),
+        type=Path,
+        help="Local OpenAI-compatible LLM config path.",
+    )
     return parser
 
 
@@ -50,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
             if args.variant_calling_dir
             else None
         ),
+        use_llm_reviewer=bool(args.use_llm_reviewer),
+        llm_config=args.llm_config.expanduser(),
     )
     try:
         result = run_flavonoid_marker_langgraph_task(config)
@@ -79,6 +92,18 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[flavonoid-markers-graph] report: {outputs.get('report')}", flush=True)
     print(f"[flavonoid-markers-graph] qa_check: {outputs.get('qa_check')}", flush=True)
     print(f"[flavonoid-markers-graph] qa passed: {qa_result.get('passed')}", flush=True)
+    llm_metadata = result.get("llm_reviewer", {})
+    if isinstance(llm_metadata, dict):
+        print(
+            "[flavonoid-markers-graph] llm reviewer: "
+            f"enabled={llm_metadata.get('llm_reviewer_enabled')} "
+            f"used={llm_metadata.get('llm_used')} "
+            f"fallback={llm_metadata.get('fallback_used')} "
+            f"model={llm_metadata.get('model')} "
+            f"guard_passed={llm_metadata.get('guard_passed')} "
+            f"fallback_reason={llm_metadata.get('fallback_reason')}",
+            flush=True,
+        )
     return 0
 
 

@@ -54,6 +54,27 @@ class FlavonoidReviewerAgent(LLMReadyAgentMixin, RuleBasedAgent):
         )
         return self._agent_output(result)
 
+    def add_llm_review(
+        self,
+        output: AgentOutput,
+        *,
+        llm_review_text: str,
+        llm_metadata: dict[str, object],
+    ) -> AgentOutput:
+        """Attach guarded LLM reviewer notes while preserving rule output."""
+
+        payload = dict(output.structured_payload)
+        rule_notes = str(payload.get("reviewer_notes", ""))
+        payload["rule_reviewer_notes"] = rule_notes
+        payload["llm_reviewer"] = dict(llm_metadata)
+        if llm_review_text.strip():
+            payload["reviewer_notes"] = (
+                f"{rule_notes}\n\n"
+                "LLM Reviewer 审阅增强（仅作审阅提示，不生成新的 SNP/InDel/KASP/CAPS 结论）：\n"
+                f"{llm_review_text.strip()}"
+            )
+        return self._agent_output(payload)
+
     def _run_rule(
         self,
         *,
