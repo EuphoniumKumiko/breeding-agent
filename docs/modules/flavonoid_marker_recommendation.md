@@ -13,6 +13,8 @@ Flavonoid Marker Recommendation 模块用于谷子黄酮候选标记推荐。它
 
 当前还支持可选接入 Genomics Candidate Variant Calling MVP 的真实 TSV 输出。传入 `--variant-calling-dir` 后，报告会展示每个目标基因的候选区域变异 calling 证据、PASS/LowQual 质量分层和 KASP/CAPS preliminary screening 状态。不传该参数时保持旧行为。
 
+当前 agent layer 已新增 LLM-ready interface。它只定义统一输入/输出、prompt templates、context builder 和规则 fallback，不接真实大模型 API。
+
 ## 2. 学长硬性要求
 
 核心输入必须记录：
@@ -58,6 +60,9 @@ Si9g34380.1
 | `src/breeding_agent/workflows/flavonoid_marker_aggregation.py` | aggregation workflow |
 | `src/breeding_agent/integration/flavonoid_marker_aggregator.py` | 聚合 candidate table |
 | `src/breeding_agent/integration/flavonoid_variant_evidence.py` | 可选读取 variant calling TSV 并按目标基因聚合 |
+| `src/breeding_agent/agents/base.py` | LLM-ready agent base interface |
+| `src/breeding_agent/agents/context_builder.py` | 汇总 evidence 为 agent context |
+| `src/breeding_agent/agents/prompt_templates.py` | 未来 LLM adapter 可使用的 prompt 模板 |
 | `src/breeding_agent/agents/flavonoid_central_host.py` | agent 编排 |
 | `src/breeding_agent/agents/flavonoid_literature_agent.py` | 文献 evidence 读取 |
 | `src/breeding_agent/agents/flavonoid_marker_recommendation_agent.py` | 标记类型推荐 |
@@ -66,6 +71,8 @@ Si9g34380.1
 | `src/breeding_agent/agents/flavonoid_final_qa_agent.py` | 最终 QA wrapper |
 | `src/breeding_agent/reports/flavonoid_marker_report.py` | Markdown 报告 |
 | `src/breeding_agent/integration/flavonoid_marker_qa.py` | QA 规则 |
+| `docs/agent_interface_design.md` | agent interface 设计说明 |
+| `tests/test_agent_interface.py` | LLM-ready interface 测试 |
 | `tests/test_flavonoid_agent_layer.py` | agent layer 测试 |
 | `tests/test_flavonoid_marker_qa.py` | QA 测试 |
 | `tests/test_flavonoid_variant_evidence.py` | 可选 variant evidence 聚合测试 |
@@ -178,6 +185,7 @@ outputs/flavonoid_marker_from_package/
 ```text
 FlavonoidCentralHost.run()
   -> aggregate_flavonoid_marker_candidates()
+  -> build_flavonoid_agent_context()
   -> FlavonoidLiteratureAgent.run()
   -> FlavonoidMarkerRecommendationAgent.run()
   -> FlavonoidValidationAgent.run()
@@ -187,12 +195,71 @@ FlavonoidCentralHost.run()
   -> render final report
 ```
 
+### Agent interface
+
+统一接口定义在：
+
+```text
+src/breeding_agent/agents/base.py
+```
+
+核心对象：
+
+- `AgentInput`：agent name、context、prompt template 和参数。
+- `AgentOutput`：统一结构，包含 `agent_name`、`summary`、`evidence_used`、`warnings`、`limitations`、`structured_payload`。
+- `AgentResult`：保留输入、输出、fallback 和 LLM 标记。
+- `BaseAgent`：定义 `run_with_context(context)`。
+- `RuleBasedAgent`：当前 deterministic fallback。
+- `LLMReadyAgentMixin`：只提供 prompt 构建 hook，不调用任何 LLM SDK。
+
+旧 `run()` 调用继续可用；新增 `run_with_context(context)` 返回 `AgentOutput`。旧返回值会额外包含 `agent_output`，但原有字段保持不变。
+
+### Context builder
+
+统一 context 构建位于：
+
+```text
+src/breeding_agent/agents/context_builder.py
+```
+
+`build_flavonoid_agent_context()` 汇总：
+
+- transcriptomics evidence
+- metabolomics evidence
+- annotation evidence
+- genome variant evidence
+- literature evidence
+- optional variant calling evidence
+- aggregation 后的 candidate rows
+- 学长硬性要求和安全边界
+
+context 只读取已整理的小型 evidence TSV 和候选表，不读取 `data/private/` 大文件进入 prompt，也不做 LLM 调用。
+
+### Prompt templates
+
+Prompt 模板位于：
+
+```text
+src/breeding_agent/agents/prompt_templates.py
+```
+
+包括：
+
+- `literature_agent_prompt`
+- `marker_recommendation_agent_prompt`
+- `validation_agent_prompt`
+- `reviewer_agent_prompt`
+- `final_qa_agent_prompt`
+
+模板统一强调：不伪造 SNP/InDel、不伪造 DOI、LowQual 不得优先推荐、preliminary KASP/CAPS 不是最终标记、当前 variant calling 不能替代 WGS/GBS 群体变异检测，并保留学长硬性要求。
+
 ### 每个 agent 的职责
 
 - `FlavonoidCentralHost`
   - 组织所有步骤。
+  - 构建 agent context。
   - 收集 warnings。
-  - 输出 agent_layer metadata。
+  - 输出 agent_layer metadata，包括 `interface=llm_ready_rule_based_fallback`。
 - `FlavonoidLiteratureAgent`
   - 读取 `literature_evidence.tsv`。
   - 原样展示 DOI。
@@ -303,7 +370,15 @@ passed=true
 
 ### 这是 LLM agent 吗？
 
-不是。当前 agent layer 是规则版、轻量级、可复现结构，不调用 LLM。
+不是。当前 agent layer 是规则版、轻量级、可复现结构，不调用 LLM。现在只是 LLM-ready：有统一 interface、prompt templates 和 context builder，方便未来接入。
+
+### 未来如何接 OpenAI 或本地模型？
+
+未来应新增独立 adapter：把 `AgentInput` 转成模型请求，把模型输出解析为 `AgentOutput`。模型失败、输出缺字段或违反“不伪造 DOI / SNP/InDel”等硬性限制时，必须丢弃模型输出并 fallback 到规则版。模型输出进入报告前仍要经过 ReviewerAgent 和 FinalQAAgent。
+
+### 未来如何接 LangGraph？
+
+如果后续需要 LangGraph，只应把当前 agents 节点化，不改变 evidence schema、CLI、报告 QA 和规则 fallback。当前版本不引入 LangGraph 依赖，也不引入 Deep Agents 或外部 LLM SDK。
 
 ### 为什么报告里没有具体 SNP 坐标？
 

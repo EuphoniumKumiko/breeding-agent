@@ -2,11 +2,29 @@
 
 from __future__ import annotations
 
+from breeding_agent.agents.base import AgentOutput, LLMReadyAgentMixin, RuleBasedAgent
+from breeding_agent.agents.prompt_templates import marker_recommendation_agent_prompt
 
-class FlavonoidMarkerRecommendationAgent:
+
+class FlavonoidMarkerRecommendationAgent(LLMReadyAgentMixin, RuleBasedAgent):
     """Recommend marker types from candidate evidence and variant status."""
 
+    agent_name = "marker_recommendation_agent"
+    prompt_template = marker_recommendation_agent_prompt
+
     def run(self, candidate_rows: list[dict[str, str]]) -> dict[str, object]:
+        result = self._run_rule(candidate_rows)
+        return {
+            **result,
+            "agent_output": self._agent_output(candidate_rows, result).to_dict(),
+        }
+
+    def run_with_context(self, context: dict[str, object]) -> AgentOutput:
+        candidate_rows = _as_rows(context.get("candidate_rows", []))
+        result = self._run_rule(candidate_rows)
+        return self._agent_output(candidate_rows, result)
+
+    def _run_rule(self, candidate_rows: list[dict[str, str]]) -> dict[str, object]:
         recommendations_by_gene = {
             row.get("gene_id", "unknown"): self._recommend_for_gene(row)
             for row in candidate_rows
@@ -18,6 +36,29 @@ class FlavonoidMarkerRecommendationAgent:
                 recommendations_by_gene,
             ),
         }
+
+    def _agent_output(
+        self,
+        candidate_rows: list[dict[str, str]],
+        result: dict[str, object],
+    ) -> AgentOutput:
+        return AgentOutput(
+            agent_name=self.agent_name,
+            summary=f"Generated marker recommendations for {len(candidate_rows)} genes.",
+            evidence_used=[
+                "flavonoid_marker_candidates.tsv",
+                "genome_variant_evidence.tsv",
+                "optional candidate variant calling evidence",
+            ],
+            warnings=[],
+            limitations=[
+                "No SNP/InDel positions are fabricated.",
+                "LowQual variants are not prioritized.",
+                "KASP/CAPS preliminary screening is not final marker design.",
+                "Candidate-region variant calling does not replace WGS/GBS population calling.",
+            ],
+            structured_payload=result,
+        )
 
     def _recommend_for_gene(self, row: dict[str, str]) -> str:
         variant_evidence_status = row.get("variant_evidence_status", "")
@@ -78,10 +119,16 @@ class FlavonoidMarkerRecommendationAgent:
         for row in candidate_rows:
             gene_id = row.get("gene_id", "unknown")
             lines.append(
-            "| {gene_id} | {variant_status} | {recommendation} |".format(
+                "| {gene_id} | {variant_status} | {recommendation} |".format(
                     gene_id=gene_id,
                     variant_status=row.get("variant_status", "not_called"),
                     recommendation=recommendations_by_gene.get(gene_id, ""),
                 )
             )
         return "\n".join(lines)
+
+
+def _as_rows(value: object) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    return [row for row in value if isinstance(row, dict)]

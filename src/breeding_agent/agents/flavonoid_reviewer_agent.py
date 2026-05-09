@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import re
 
+from breeding_agent.agents.base import AgentOutput, LLMReadyAgentMixin, RuleBasedAgent
+from breeding_agent.agents.prompt_templates import reviewer_agent_prompt
+
 
 REQUIRED_STAT_COLUMNS = ["baseMean", "log2FC", "pvalue", "padj"]
 DOI_RE = re.compile(r"\b10\.\d{4,9}/[^\s|)]+", re.IGNORECASE)
@@ -12,10 +15,46 @@ POSITION_RE = re.compile(
 )
 
 
-class FlavonoidReviewerAgent:
+class FlavonoidReviewerAgent(LLMReadyAgentMixin, RuleBasedAgent):
     """Check for common over-claiming and evidence omissions."""
 
+    agent_name = "reviewer_agent"
+    prompt_template = reviewer_agent_prompt
+
     def run(
+        self,
+        *,
+        candidate_rows: list[dict[str, str]],
+        literature_review_text: str,
+        marker_recommendation_text: str,
+        validation_plan_text: str,
+        report_text: str,
+    ) -> dict[str, object]:
+        result = self._run_rule(
+            candidate_rows=candidate_rows,
+            literature_review_text=literature_review_text,
+            marker_recommendation_text=marker_recommendation_text,
+            validation_plan_text=validation_plan_text,
+            report_text=report_text,
+        )
+        return {
+            **result,
+            "agent_output": self._agent_output(result).to_dict(),
+        }
+
+    def run_with_context(self, context: dict[str, object]) -> AgentOutput:
+        result = self._run_rule(
+            candidate_rows=_as_rows(context.get("candidate_rows", [])),
+            literature_review_text=str(context.get("literature_review_text", "")),
+            marker_recommendation_text=str(
+                context.get("marker_recommendation_text", "")
+            ),
+            validation_plan_text=str(context.get("validation_plan_text", "")),
+            report_text=str(context.get("report_text", "")),
+        )
+        return self._agent_output(result)
+
+    def _run_rule(
         self,
         *,
         candidate_rows: list[dict[str, str]],
@@ -54,6 +93,26 @@ class FlavonoidReviewerAgent:
             "issues": issues,
             "reviewer_notes": reviewer_notes,
         }
+
+    def _agent_output(self, result: dict[str, object]) -> AgentOutput:
+        issues = result.get("issues", [])
+        issue_count = len(issues) if isinstance(issues, list) else 0
+        return AgentOutput(
+            agent_name=self.agent_name,
+            summary=f"Reviewed report draft; issue_count={issue_count}.",
+            evidence_used=[
+                "candidate_rows",
+                "literature_review_text",
+                "marker_recommendation_text",
+                "validation_plan_text",
+                "draft_report_text",
+            ],
+            warnings=[str(issue) for issue in issues] if isinstance(issues, list) else [],
+            limitations=[
+                "Reviewer uses deterministic checks and does not replace human review.",
+            ],
+            structured_payload=result,
+        )
 
     def _missing_statistics(
         self,
@@ -118,3 +177,9 @@ class FlavonoidReviewerAgent:
                         f"{gene_id} 描述错误：当前无 called variant 却写成已有 PASS variant。"
                     )
         return issues
+
+
+def _as_rows(value: object) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+    return [row for row in value if isinstance(row, dict)]

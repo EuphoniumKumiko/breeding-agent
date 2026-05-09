@@ -41,6 +41,8 @@ class FlavonoidAgentLayerTest(unittest.TestCase):
         self.assertIn("文献查阅过程", review_text)
         self.assertIn("DOI", review_text)
         self.assertIn("10.3390/life11060578", review_text)
+        self.assertIn("agent_output", result)
+        self.assertEqual(result["agent_output"]["agent_name"], "literature_agent")
 
     def test_marker_agent_does_not_fabricate_variant_positions_when_not_called(self):
         rows = [
@@ -55,6 +57,11 @@ class FlavonoidAgentLayerTest(unittest.TestCase):
         self.assertIn("当前没有最终 SNP/InDel 位点", text)
         self.assertIn("SNP/InDel/KASP", text)
         self.assertIn("CAPS", text)
+        self.assertIn("agent_output", result)
+        self.assertEqual(
+            result["agent_output"]["agent_name"],
+            "marker_recommendation_agent",
+        )
         self.assertIsNone(
             re.search(
                 r"(?i)(?:chr\w+|scaffold\w+|contig\w+)[:：]\d+|\bposition=\d+|\b\d+:\d+\b",
@@ -102,11 +109,15 @@ class FlavonoidAgentLayerTest(unittest.TestCase):
         self.assertIn("CAPS/dCAPS", text)
         self.assertIn("qRT-PCR", text)
         self.assertIn("LC-MS/MS", text)
+        self.assertIn("agent_output", result)
+        self.assertEqual(result["agent_output"]["agent_name"], "validation_agent")
 
     def test_final_qa_agent_passes_complete_report(self):
         result = FlavonoidFinalQAAgent().run(COMPLETE_REPORT)
 
         self.assertIs(result["passed"], True)
+        self.assertIn("agent_output", result)
+        self.assertEqual(result["agent_output"]["agent_name"], "final_qa_agent")
 
     def test_cli_runs_with_real_evidence(self):
         self.assertTrue(EVIDENCE_DIR.exists(), f"Missing evidence dir: {EVIDENCE_DIR}")
@@ -168,6 +179,12 @@ class FlavonoidAgentLayerTest(unittest.TestCase):
             )
             self.assertIn("variant_evidence_status", candidate_text)
             self.assertIn("preliminary_pass_variants_detected", candidate_text)
+            manifest = json.loads((outdir / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                manifest["agent_layer"]["interface"],
+                "llm_ready_rule_based_fallback",
+            )
+            self.assertIs(manifest["agent_layer"]["uses_llm"], False)
 
 
 def _create_mock_variant_calling_dir(base_dir: Path) -> Path:
