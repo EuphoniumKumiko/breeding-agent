@@ -9,6 +9,7 @@
 - 已实现：RNA-seq 差异表达分析、结果报告、标准 transcriptomics evidence、候选基因表和第一版 recommendation report。
 - 已实现：从学长谷子黄酮标记 mini 数据包生成 aggregation evidence 的 demo 转换脚本。
 - 已实现：flavonoid marker aggregation CLI，采用规则版 workflow + DeepRare-like lightweight agent layer，整合 transcriptome、metabolome、annotation、genome variant 和 literature evidence，给出 SNP/InDel/KASP/CAPS 等可开发标记类型建议，并输出 QA 检查结果。
+- 已实现：并行 LangGraph 版 flavonoid marker workflow，把现有规则化 agents 作为 graph nodes 编排；LangGraph 是可选依赖，不影响旧 CLI。
 - 已实现：Genomics Candidate Variant Calling MVP，基于候选区域运行 `samtools`/`bcftools`，输出真实 VCF 中存在的 SNP/InDel、KASP preliminary screening 和 CAPS screening 表。
 - 已实现：Gradio `Metabolomics Module` 和 `Genomics / GWAS Module` 第一版可运行页面，读取学长数据包已有结果表，分别做代谢组 evidence analysis 和基因组 region / annotation analysis；`Genomics / GWAS Module` 也可展示 Candidate Variant Calling MVP。
 - 禁止事项：不能伪造 SNP/InDel 位点，不能伪造 DOI，不能把 `data/private/` 和 `outputs/` 中的数据加入 Git。
@@ -41,6 +42,10 @@
 - aggregator：`src/breeding_agent/integration/flavonoid_marker_aggregator.py`
 - QA：`src/breeding_agent/integration/flavonoid_marker_qa.py`
 - report：`src/breeding_agent/reports/flavonoid_marker_report.py`
+- LangGraph workflow：`src/breeding_agent/workflows/flavonoid_marker_langgraph.py`
+- LangGraph CLI：`src/breeding_agent/cli/flavonoid_markers_graph.py`
+- LangGraph graph：`src/breeding_agent/graphs/flavonoid_marker_graph.py`
+- LangGraph trace reports：`src/breeding_agent/reports/langgraph_trace_report.py`
 
 已实现的 Gradio 多组学模块：
 
@@ -412,7 +417,8 @@ outputs/flavonoid_marker_from_package/
 
 当前限制：
 
-- aggregation 是规则版/模板版 workflow + DeepRare-like lightweight agent layer，不调用 LLM，不调用外部 API，不引入 Deep Agents 或 LangGraph。
+- 默认 aggregation 是规则版/模板版 workflow + DeepRare-like lightweight agent layer，不调用 LLM，不调用外部 API，不引入 Deep Agents，也不依赖 LangGraph。
+- 并行 LangGraph workflow 只作为可选 graph 编排入口；旧 workflow 和旧 CLI 不依赖 LangGraph。
 - 文献 DOI 只来自 `literature_evidence.tsv` 或经过人工核验的输入，不伪造 DOI。
 - 当前 mini 数据包没有最终 SNP/InDel calling 结果时，报告必须保留 `variant_status=not_called`。
 - 不伪造 SNP/InDel 具体位点；后续应基于 BAM、`genome.fa/genome.gff` 或 `genome.bam_compatible.fa.gz` 与 `genome.original_coords.gff` 做候选区域 SNP/InDel calling，再筛选 KASP/CAPS 可转化位点。
@@ -429,6 +435,38 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
   --outdir outputs/flavonoid_marker_from_package \
   --variant-calling-dir outputs/genomics_variant_calling
 ```
+
+并行 LangGraph flavonoid marker CLI：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+如未安装 LangGraph，安装方式：
+
+```bash
+pip install langgraph
+```
+
+LangGraph 输出包括：
+
+```text
+outputs/flavonoid_marker_langgraph/
+├── graph/
+│   ├── graph_trace.json
+│   ├── graph_state_final.json
+│   ├── node_decision_table.tsv
+│   └── langgraph_summary.md
+├── integration/flavonoid_marker_candidates.tsv
+├── reports/flavonoid_marker_report.md
+├── logs/qa_check.json
+└── manifest.json
+```
+
+为什么先接 LangGraph，而不是先接开源本地大模型：当前优先稳定 node/state/trace 的可复现编排边界；真实模型会引入不可复现输出、部署依赖和伪造 DOI/SNP/InDel 风险。Deep Agents 仅作为后续规划，本阶段不接入。
 
 ## 11. Genomics Candidate Variant Calling MVP
 

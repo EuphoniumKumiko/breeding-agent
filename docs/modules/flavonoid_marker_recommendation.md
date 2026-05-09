@@ -9,7 +9,9 @@ Flavonoid Marker Recommendation 模块用于谷子黄酮候选标记推荐。它
 - QA 检查 JSON。
 - manifest。
 
-当前模块是规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。它不调用 LLM，不调用外部 API，不引入 Deep Agents 或 LangGraph。
+当前默认模块是规则版、模板版、可复现 workflow，并带有 DeepRare-like lightweight agent layer。它不调用 LLM，不调用外部 API，不引入 Deep Agents。
+
+项目还新增了一个并行 LangGraph workflow，用于把现有规则 agents 作为 graph nodes 编排。LangGraph 是可选依赖；旧 workflow 和旧 CLI 不依赖 LangGraph。
 
 当前还支持可选接入 Genomics Candidate Variant Calling MVP 的真实 TSV 输出。传入 `--variant-calling-dir` 后，报告会展示每个目标基因的候选区域变异 calling 证据、PASS/LowQual 质量分层和 KASP/CAPS preliminary screening 状态。不传该参数时保持旧行为。
 
@@ -58,11 +60,16 @@ Si9g34380.1
 | `src/breeding_agent/integration/flavonoid_marker_package_importer.py` | evidence 转换核心逻辑 |
 | `src/breeding_agent/cli/flavonoid_markers.py` | aggregation CLI |
 | `src/breeding_agent/workflows/flavonoid_marker_aggregation.py` | aggregation workflow |
+| `src/breeding_agent/workflows/flavonoid_marker_langgraph.py` | 可选 LangGraph workflow |
 | `src/breeding_agent/integration/flavonoid_marker_aggregator.py` | 聚合 candidate table |
 | `src/breeding_agent/integration/flavonoid_variant_evidence.py` | 可选读取 variant calling TSV 并按目标基因聚合 |
 | `src/breeding_agent/agents/base.py` | LLM-ready agent base interface |
 | `src/breeding_agent/agents/context_builder.py` | 汇总 evidence 为 agent context |
 | `src/breeding_agent/agents/prompt_templates.py` | 未来 LLM adapter 可使用的 prompt 模板 |
+| `src/breeding_agent/graphs/state.py` | LangGraph state schema |
+| `src/breeding_agent/graphs/flavonoid_marker_graph.py` | LangGraph nodes and graph builder |
+| `src/breeding_agent/cli/flavonoid_markers_graph.py` | LangGraph workflow CLI |
+| `src/breeding_agent/reports/langgraph_trace_report.py` | graph trace / node decision reports |
 | `src/breeding_agent/agents/flavonoid_central_host.py` | agent 编排 |
 | `src/breeding_agent/agents/flavonoid_literature_agent.py` | 文献 evidence 读取 |
 | `src/breeding_agent/agents/flavonoid_marker_recommendation_agent.py` | 标记类型推荐 |
@@ -72,7 +79,9 @@ Si9g34380.1
 | `src/breeding_agent/reports/flavonoid_marker_report.py` | Markdown 报告 |
 | `src/breeding_agent/integration/flavonoid_marker_qa.py` | QA 规则 |
 | `docs/agent_interface_design.md` | agent interface 设计说明 |
+| `docs/langgraph_flavonoid_marker_workflow.md` | LangGraph workflow 使用说明 |
 | `tests/test_agent_interface.py` | LLM-ready interface 测试 |
+| `tests/test_langgraph_flavonoid_workflow.py` | LangGraph workflow 测试 |
 | `tests/test_flavonoid_agent_layer.py` | agent layer 测试 |
 | `tests/test_flavonoid_marker_qa.py` | QA 测试 |
 | `tests/test_flavonoid_variant_evidence.py` | 可选 variant evidence 聚合测试 |
@@ -105,6 +114,21 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
   --evidence-dir outputs/flavonoid_marker_from_package/evidence \
   --outdir outputs/flavonoid_marker_from_package \
   --variant-calling-dir outputs/genomics_variant_calling
+```
+
+并行 LangGraph CLI：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+如果未安装 LangGraph，会提示：
+
+```text
+LangGraph is not installed. Install with: pip install langgraph
 ```
 
 agent 入口：
@@ -376,9 +400,11 @@ passed=true
 
 未来应新增独立 adapter：把 `AgentInput` 转成模型请求，把模型输出解析为 `AgentOutput`。模型失败、输出缺字段或违反“不伪造 DOI / SNP/InDel”等硬性限制时，必须丢弃模型输出并 fallback 到规则版。模型输出进入报告前仍要经过 ReviewerAgent 和 FinalQAAgent。
 
-### 未来如何接 LangGraph？
+### 当前 LangGraph workflow 是什么？
 
-如果后续需要 LangGraph，只应把当前 agents 节点化，不改变 evidence schema、CLI、报告 QA 和规则 fallback。当前版本不引入 LangGraph 依赖，也不引入 Deep Agents 或外部 LLM SDK。
+当前已经有并行 LangGraph workflow。它只把现有 agents 节点化，不改变旧 evidence schema、旧 CLI、报告 QA 和规则 fallback。它不接真实 LLM，不接本地开源大模型，也不接 Deep Agents。
+
+LangGraph state 记录 `evidence_dir`、`outdir`、`variant_calling_dir`、`agent_context`、`agent_outputs`、`qa_result` 和 `graph_trace` 等字段。输出包括 `graph_trace.json`、`graph_state_final.json`、`node_decision_table.tsv` 和 `langgraph_summary.md`。
 
 ### 为什么报告里没有具体 SNP 坐标？
 

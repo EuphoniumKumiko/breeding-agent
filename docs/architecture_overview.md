@@ -25,6 +25,8 @@
 - `src/breeding_agent/cli/flavonoid_markers.py`：黄酮候选标记 aggregation CLI。
 - `src/breeding_agent/workflows/flavonoid_marker_aggregation.py`：黄酮候选标记 aggregation workflow。
 - `src/breeding_agent/agents/`：规则版 DeepRare-like lightweight agent layer。
+- `src/breeding_agent/graphs/`：可选 LangGraph 版黄酮候选标记 graph 编排。
+- `src/breeding_agent/cli/flavonoid_markers_graph.py`：并行 LangGraph workflow CLI。
 - `src/breeding_agent/modules/metabolomics/`：代谢组 evidence analysis 后端。
 - `src/breeding_agent/modules/genomics/`：基因组候选区域和 marker readiness 后端。
 - `src/breeding_agent/web/gradio_app.py`：本地 Gradio 工作台。
@@ -82,6 +84,24 @@ src/breeding_agent/web/gradio_app.py
 
 Gradio 只是展示层和按钮入口，不改变后端分析逻辑。
 
+### LangGraph 版黄酮标记推荐数据流
+
+```text
+outputs/flavonoid_marker_from_package/evidence/*.tsv
+  -> cli/flavonoid_markers_graph.py
+  -> workflows/flavonoid_marker_langgraph.py
+  -> graphs/flavonoid_marker_graph.py
+  -> load_evidence_node
+  -> aggregate_candidates_node
+  -> build_agent_context_node
+  -> literature / marker / validation / reviewer / final_qa agent nodes
+  -> reports/flavonoid_marker_report.py
+  -> reports/langgraph_trace_report.py
+  -> outputs/flavonoid_marker_langgraph/
+```
+
+LangGraph 在本项目中只负责 workflow / agent graph 编排，不负责模型推理。当前不接真实大模型、不接本地开源模型、不接 OpenAI SDK、不接 Deep Agents。
+
 ## 模块划分
 
 ### CLI
@@ -94,6 +114,11 @@ Gradio 只是展示层和按钮入口，不改变后端分析逻辑。
   - 解析 `--evidence-dir` 和 `--outdir`。
   - 构造 `FlavonoidMarkerAggregationConfig`。
   - 调用 `run_flavonoid_marker_aggregation_task`。
+- `src/breeding_agent/cli/flavonoid_markers_graph.py`
+  - 解析 `--evidence-dir`、`--outdir` 和可选 `--variant-calling-dir`。
+  - 构造 `FlavonoidMarkerLangGraphConfig`。
+  - 调用 `run_flavonoid_marker_langgraph_task`。
+  - 如果未安装 LangGraph，提示 `pip install langgraph`，不影响旧 CLI。
 
 ### workflows
 
@@ -101,6 +126,7 @@ Gradio 只是展示层和按钮入口，不改变后端分析逻辑。
 - `metabolomics_evidence.py`：调用代谢组 module，生成报告和 manifest。
 - `genomics_region.py`：调用基因组 module，生成报告和 manifest。
 - `flavonoid_marker_aggregation.py`：调用 CentralHost、生成报告、写 QA JSON 和 manifest。
+- `flavonoid_marker_langgraph.py`：可选 LangGraph workflow wrapper，写 graph trace、node decision table、summary、报告、QA 和 manifest。
 
 ### modules
 
@@ -132,6 +158,22 @@ Gradio 只是展示层和按钮入口，不改变后端分析逻辑。
 - `FlavonoidValidationAgent`：生成验证方案。
 - `FlavonoidReviewerAgent`：检查过度推断、缺失 DOI、缺失统计值、疑似伪造坐标等。
 - `FlavonoidFinalQAAgent`：复用 canonical QA。
+
+这些 agents 已支持 LLM-ready `run_with_context()` interface，可作为 LangGraph nodes 运行。
+
+### graphs
+
+`src/breeding_agent/graphs/` 是可选 LangGraph 编排层：
+
+- `state.py`：定义 JSON 可序列化的 `FlavonoidGraphState`。
+- `flavonoid_marker_graph.py`：定义 `load_evidence_node`、`aggregate_candidates_node`、`build_agent_context_node`、各 agent node、`report_node` 和 `write_outputs_node`。
+
+Graph 输出：
+
+- `graph/graph_trace.json`
+- `graph/graph_state_final.json`
+- `graph/node_decision_table.tsv`
+- `graph/langgraph_summary.md`
 
 ### reports
 
@@ -256,7 +298,8 @@ Gradio 负责本地页面展示和触发已有入口
 - 基因组模块不做正式 SNP/InDel calling。
 - 当前 mini 数据包没有最终 SNP/InDel 位点，因此不能输出具体 SNP/InDel 坐标。
 - 当前文献 evidence 只来自已有 `literature_evidence.tsv`，不做外部 API 检索。
-- flavonoid marker aggregation 是规则版 workflow，不调用 LLM、Deep Agents 或 LangGraph。
+- 默认 flavonoid marker aggregation 是规则版 workflow，不调用 LLM、不调用 Deep Agents，也不依赖 LangGraph。
+- 并行 LangGraph workflow 是可选编排入口，当前仍不调用真实 LLM、本地开源模型或外部 API。
 
 ## 禁止事项
 
