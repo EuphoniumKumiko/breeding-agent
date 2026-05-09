@@ -58,12 +58,13 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 
 ## 输入框
 
-`谷子黄酮候选标记推荐` Tab 当前有三个输入框：
+`谷子黄酮候选标记推荐` Tab 当前有四个输入框：
 
 ```text
 dataset_dir
 evidence_dir
 outdir
+variant_calling_dir
 ```
 
 默认值：
@@ -72,6 +73,7 @@ outdir
 dataset_dir = data/private/flavonoid_marker_mini_5genes_50kb
 evidence_dir = outputs/flavonoid_marker_from_package/evidence
 outdir = outputs/flavonoid_marker_from_package
+variant_calling_dir = outputs/genomics_variant_calling
 ```
 
 含义：
@@ -79,6 +81,7 @@ outdir = outputs/flavonoid_marker_from_package
 - `dataset_dir`：学长 mini 数据包本地目录。
 - `evidence_dir`：从数据包转换得到的标准 evidence TSV 目录。
 - `outdir`：flavonoid marker aggregation 输出目录。
+- `variant_calling_dir`：可选 Genomics Candidate Variant Calling MVP 输出目录。留空或目录不存在时保持原有黄酮推荐流程，不失败；目录存在时读取 variant evidence 并接入报告。
 
 ## 按钮
 
@@ -125,13 +128,25 @@ src/breeding_agent/workflows/flavonoid_marker_aggregation.py
 
 它读取 `evidence_dir`，运行规则版 flavonoid marker aggregation workflow，并生成候选表、Markdown 报告、QA JSON 和 manifest。
 
+如果 `variant_calling_dir` 存在，还会读取：
+
+```text
+outputs/genomics_variant_calling/tables/candidate_variants.tsv
+outputs/genomics_variant_calling/tables/kasp_candidate_sites.tsv
+outputs/genomics_variant_calling/tables/caps_candidate_sites.tsv
+```
+
+并在报告中增加或刷新 `候选区域变异 calling 证据` 小节。该接入只读取真实输出，不伪造 SNP/InDel 位点；`preliminary_pass` 不等于最终 KASP marker。
+
 ### 一键运行完整流程
 
-先执行 `生成 evidence`，再执行 `运行标记推荐`。
+先执行 `生成 evidence`，再执行 `运行标记推荐`。该按钮同样支持可选 `variant_calling_dir`。
 
 ### 刷新当前结果
 
 不重新运行 workflow，只从 `outdir` 读取当前已有输出并刷新页面展示。
+
+如果上一次推荐运行时接入了 `variant_calling_dir`，刷新后报告中应能看到 `候选区域变异 calling 证据` 小节，包括三个固定基因的 `variant_evidence_status`。
 
 ## 页面输出
 
@@ -142,6 +157,7 @@ src/breeding_agent/workflows/flavonoid_marker_aggregation.py
 - `warning / error 信息`
 - `Markdown 报告`
 - `候选标记表`
+- `候选区域变异 calling 证据`
 - `qa_check.json`
 - `manifest.json`
 
@@ -155,6 +171,19 @@ outputs/flavonoid_marker_from_package/manifest.json
 ```
 
 如果文件不存在，页面会显示 `File not found` 或 warning，不会把缺失文件伪装成已有结果。
+
+接入 variant calling evidence 后，报告和候选表应展示：
+
+- `Si9g04210.1`、`Si5g31340.1`、`Si9g34380.1` 的 `variant_evidence_status`。
+- PASS / LowQual 统计。
+- SNP / InDel 统计。
+- KASP `preliminary_pass` 与 `low_quality_review_required` 统计。
+- CAPS `pass_variant_requires_enzyme_screening` 与 `low_quality_variant_requires_review` 统计。
+- “不能替代 WGS/GBS 群体变异检测”。
+- “LowQual 不应直接优先用于 KASP/CAPS 开发”。
+- “KASP/CAPS 表只是 preliminary screening，不是最终引物或酶切方案”。
+
+如果某个基因，例如 `Si9g04210.1`，当前为 `no_called_variant_in_current_mini_calling`，页面和报告不能把它显示成已有 called variant。
 
 ## QA 判断
 
@@ -188,4 +217,7 @@ QA 会检查：
 - DOI 只能来自已核验的 evidence，不能伪造。
 - 当前 mini 数据包未提供最终 SNP/InDel 位点，不能伪造 SNP/InDel 坐标。
 - 如果 genome evidence 中 `variant_status=not_called`，报告必须说明后续需要候选区域 variant calling。
+- 可选 `variant_calling_dir` 只把已有 Candidate Variant Calling MVP 结果接入报告展示，不改变后端分析边界。
+- PASS variants 可优先进入后续 marker review；LowQual variants 仅作为可追溯候选记录保留，不应直接优先用于标记开发。
+- 当前结果不能替代 WGS/GBS 群体变异检测，后续仍需更大群体基因型和黄酮含量数据验证关联。
 - `data/private/` 和 `outputs/` 是本地数据和运行输出目录，不应提交 Git。

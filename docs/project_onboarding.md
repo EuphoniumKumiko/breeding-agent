@@ -9,7 +9,8 @@
 - 已实现：RNA-seq 差异表达分析、结果报告、标准 transcriptomics evidence、候选基因表和第一版 recommendation report。
 - 已实现：从学长谷子黄酮标记 mini 数据包生成 aggregation evidence 的 demo 转换脚本。
 - 已实现：flavonoid marker aggregation CLI，采用规则版 workflow + DeepRare-like lightweight agent layer，整合 transcriptome、metabolome、annotation、genome variant 和 literature evidence，给出 SNP/InDel/KASP/CAPS 等可开发标记类型建议，并输出 QA 检查结果。
-- 已实现：Gradio `Metabolomics Module` 和 `Genomics / GWAS Module` 第一版可运行页面，读取学长数据包已有结果表，分别做代谢组 evidence analysis 和基因组 region / annotation analysis。
+- 已实现：Genomics Candidate Variant Calling MVP，基于候选区域运行 `samtools`/`bcftools`，输出真实 VCF 中存在的 SNP/InDel、KASP preliminary screening 和 CAPS screening 表。
+- 已实现：Gradio `Metabolomics Module` 和 `Genomics / GWAS Module` 第一版可运行页面，读取学长数据包已有结果表，分别做代谢组 evidence analysis 和基因组 region / annotation analysis；`Genomics / GWAS Module` 也可展示 Candidate Variant Calling MVP。
 - 禁止事项：不能伪造 SNP/InDel 位点，不能伪造 DOI，不能把 `data/private/` 和 `outputs/` 中的数据加入 Git。
 
 当前项目根目录未发现 `README.md`，因此新人应优先阅读本文档、`AGENTS.md` 和 `docs/flavonoid_marker_package_import.md`。
@@ -49,6 +50,9 @@
 - 基因组后端：`src/breeding_agent/modules/genomics/genomics_region.py`
 - 基因组 workflow：`src/breeding_agent/workflows/genomics_region.py`
 - 基因组报告：`src/breeding_agent/reports/genomics_report.py`
+- 候选区域变异 calling CLI：`src/breeding_agent/cli/genomics_variants.py`
+- 候选区域变异 calling workflow：`src/breeding_agent/workflows/genomics_variant_calling.py`
+- 候选区域变异 calling 报告：`src/breeding_agent/reports/genomics_variant_report.py`
 - Gradio 使用说明：`docs/gradio_omics_modules_usage.md`
 
 ## 3. 目录结构速览
@@ -426,7 +430,43 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
   --variant-calling-dir outputs/genomics_variant_calling
 ```
 
-## 11. 人工校验清单
+## 11. Genomics Candidate Variant Calling MVP
+
+当前已实现独立候选区域 SNP/InDel calling MVP：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.genomics_variants \
+  --dataset-dir data/private/flavonoid_marker_mini_5genes_50kb \
+  --outdir outputs/genomics_variant_calling
+```
+
+该 workflow 使用已有 Python 后端调用 `samtools` 和 `bcftools`，不会在 Gradio 或文档层重新实现 calling 命令。若工具缺失，CLI/Gradio 会给出安装提示。默认输出：
+
+```text
+outputs/genomics_variant_calling/
+├── tables/
+│   ├── candidate_variants.tsv
+│   ├── snp_candidates.tsv
+│   ├── indel_candidates.tsv
+│   ├── kasp_candidate_sites.tsv
+│   └── caps_candidate_sites.tsv
+├── reports/
+│   └── genomics_variant_calling_report.md
+├── logs/
+│   └── run.log
+└── manifest.json
+```
+
+质量分层：
+
+- PASS variants can be prioritized for downstream marker review（PASS 位点可优先进入后续标记开发复核）。
+- LowQual variants are retained for traceability but should not be directly prioritized（LowQual 位点仅作为可追溯候选记录保留，不应直接优先用于标记开发）。
+- This result does not replace WGS/GBS population variant calling（当前结果不能替代 WGS/GBS 群体变异检测）。
+- KASP/CAPS 表只是 preliminary screening，不是最终引物或酶切方案。
+
+该输出可通过 `--variant-calling-dir outputs/genomics_variant_calling` 可选接入黄酮标记推荐报告。接入后报告展示三个固定基因的 `variant_evidence_status`、PASS/LowQual、SNP/InDel、KASP preliminary screening 和 CAPS screening 统计。如果某个基因是 `no_called_variant_in_current_mini_calling`，不能写成已有 called variant。
+
+## 12. 人工校验清单
 
 运行 evidence 转换后，人工检查：
 
@@ -444,7 +484,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 优先围绕 Si9g04210.1、Si5g31340.1、Si9g34380.1 开发候选 SNP/InDel/KASP 标记，再用更大群体的基因型和黄酮含量数据验证关联。
 ```
 
-## 12. Gradio 页面查看谷子黄酮标记推荐结果
+## 13. Gradio 页面查看谷子黄酮标记推荐结果
 
 当前 `src/breeding_agent/web/gradio_app.py` 使用顶部 `gr.Tab` 布局，页面标题为 `Agri Multi-omics Breeding Agent Demo`。当前真实存在的 Tab 包括 `Transcriptomics DEG Module`、`Metabolomics Module`、`Genomics / GWAS Module`、`Integration & Recommendation` 和 `谷子黄酮候选标记推荐`。文档应以这个 Tab 结构为准，不再描述为左侧 sticky 导航、单页 dashboard 或 Radio 模块切换。
 
@@ -480,15 +520,17 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 
 `Metabolomics Module` 默认读取 `data/private/flavonoid_marker_mini_5genes_50kb`，输出到 `outputs/gradio_metabolomics_run/metabolomics/`，展示 `candidate_metabolites.tsv`、`flavonoid_related_significant_metabolites.tsv`、`target_gene_metabolite_network_edges.tsv`、`target_gene_spls_coefficients.tsv`、`metabolomics_report.md` 和 `manifest.json`。该模块当前是基于学长数据包已有结果表的 evidence analysis，不是从 mzML/raw 或原始峰表重新做完整代谢组统计流程。
 
-`Genomics / GWAS Module` 默认读取同一学长数据包，输出到 `outputs/gradio_genomics_run/genomics/`，展示 `target_gene_regions.tsv`、`annotation_summary.tsv`、`marker_readiness.tsv`、`genomics_report.md` 和 `manifest.json`。当前第一版只做基于已有结果表的 region / annotation analysis，不做正式 SNP/InDel calling，`marker_readiness.tsv` 中三个重点基因的 `variant_status` 固定为 `not_called`，不伪造 SNP/InDel 位点。
+`Genomics / GWAS Module` 默认读取同一学长数据包，输出到 `outputs/gradio_genomics_run/genomics/`，展示 `target_gene_regions.tsv`、`annotation_summary.tsv`、`marker_readiness.tsv`、`genomics_report.md` 和 `manifest.json`。Region analysis 仍只做基于已有结果表的 region / annotation analysis，`marker_readiness.tsv` 中三个重点基因的 `variant_status` 固定为 `not_called`，不伪造 SNP/InDel 位点。
+
+同一 Tab 还包含 `Candidate Variant Calling（候选区域变异检测）` 小节。默认 `dataset_dir=data/private/flavonoid_marker_mini_5genes_50kb`、`variant_calling_outdir=outputs/genomics_variant_calling`。点击 `Run Variant Calling` 会调用已有 Genomics Candidate Variant Calling workflow；点击 `Refresh Variant Results` 只读取已有 `outputs/genomics_variant_calling` 结果。页面展示 `Variant Quality Summary`、五个候选表、`genomics_variant_calling_report.md`、`manifest.json` 和 `run.log`。如果结果不存在，页面提示先运行 `Run Variant Calling`。
 
 `Integration & Recommendation` Tab 当前主要读取 `outputs/gradio_demo_run` 下已有 DEG integration 输出，展示 standardized evidence、candidate gene table、recommendation report、current transcriptomics report 和 provenance 信息；不要把它描述为完整多组学自动整合 workflow。
 
-`谷子黄酮候选标记推荐` Tab 支持生成 evidence、运行标记推荐、一键运行完整流程和刷新已有结果，并展示 `flavonoid_marker_candidates.tsv`、`flavonoid_marker_report.md`、`qa_check.json` 和 `manifest.json`。页面只接受服务器本地路径，不上传 BAM/FASTA 大文件。
+`谷子黄酮候选标记推荐` Tab 支持生成 evidence、运行标记推荐、一键运行完整流程和刷新已有结果，并展示 `flavonoid_marker_candidates.tsv`、`flavonoid_marker_report.md`、`qa_check.json` 和 `manifest.json`。该 Tab 新增可选 `variant_calling_dir`，默认 `outputs/genomics_variant_calling`；目录存在时接入 candidate variant calling evidence，留空或目录不存在时保持原流程。页面只接受服务器本地路径，不上传 BAM/FASTA 大文件。
 
-Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 分析逻辑。`data/private/` 和 `outputs/` 不应提交 Git。
+Gradio 是展示层和本地 workflow 触发入口，不改变后端 workflow 分析逻辑。当前 candidate variant calling 结果不能替代 WGS/GBS 群体变异检测。`data/private/` 和 `outputs/` 不应提交 Git。
 
-## 13. Git 安全流程
+## 14. Git 安全流程
 
 每次提交前运行：
 
@@ -518,7 +560,7 @@ python3 -m py_compile <changed_python_files>
 
 如果看到 `git status --short` 里出现 `data/` 或 `outputs/`，不要直接 `git add .`。应只选择需要提交的文档或代码文件。
 
-## 14. Codex 开发注意事项
+## 15. Codex 开发注意事项
 
 Codex 后续开发必须遵守：
 
@@ -532,7 +574,7 @@ Codex 后续开发必须遵守：
 - 已实现的 CLI 可以写“已实现”；没有实现的 CLI 必须写“计划中”或“待实现”。
 - 修改后必须运行 `git status --short` 和 `git diff --stat`；如果修改 Python 文件，再运行 `python3 -m py_compile <changed_python_files>`。
 
-## 15. 常见问题
+## 16. 常见问题
 
 ### 为什么运行命令要写 `PYTHONPATH=src`？
 

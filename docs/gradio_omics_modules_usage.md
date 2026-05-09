@@ -146,7 +146,7 @@ outputs/gradio_metabolomics_run/metabolomics/
 
 ## Genomics / GWAS Module
 
-该 Tab 基于已有 genome、GFF、regions、annotation 和 target genes 表做 region / marker-readiness analysis。它不做正式 SNP/InDel calling，不输出最终 SNP/InDel 坐标。
+该 Tab 保留已有 genome、GFF、regions、annotation 和 target genes 表的 region / marker-readiness analysis，并新增 `Candidate Variant Calling（候选区域变异检测）` 小节用于展示 Genomics Candidate Variant Calling MVP。Gradio 只负责触发已有 workflow 或读取已有输出，不重新实现 `samtools`/`bcftools` calling 逻辑。
 
 ### 输入
 
@@ -161,6 +161,9 @@ outdir = outputs/gradio_genomics_run
 
 - `Load Demo Genomics`
 - `Run Genomics Region Analysis`
+- `Load Demo Variant Calling`
+- `Run Variant Calling`
+- `Refresh Variant Results`
 
 ### 默认读取文件
 
@@ -203,6 +206,64 @@ not_called
 
 含义：当前 mini 数据包未提供最终 SNP/InDel calling 结果，页面不能输出具体 SNP/InDel 坐标。后续需要基于候选区域进行 variant calling，再筛选 KASP/CAPS 可转化位点。
 
+### Candidate Variant Calling 输入
+
+默认输入：
+
+```text
+dataset_dir = data/private/flavonoid_marker_mini_5genes_50kb
+variant_calling_outdir = outputs/genomics_variant_calling
+```
+
+`Run Variant Calling` 调用已有 `run_genomics_variant_calling_task()` workflow。若本地没有 `samtools` 或 `bcftools`，页面会在 `Run Status` 中显示清晰错误，不会 traceback 崩溃。
+
+`Refresh Variant Results` 只读取 `outputs/genomics_variant_calling` 下已有结果，不重新运行 calling。如果结果尚不存在，页面提示：
+
+```text
+尚未生成 candidate variant calling 结果，请先运行 Run Variant Calling。
+```
+
+### Candidate Variant Calling 输出
+
+页面展示：
+
+- `Run Status`
+- `Variant Quality Summary`
+- `candidate_variants.tsv`
+- `snp_candidates.tsv`
+- `indel_candidates.tsv`
+- `kasp_candidate_sites.tsv`
+- `caps_candidate_sites.tsv`
+- `genomics_variant_calling_report.md`
+- `manifest.json`
+- `run.log`
+
+对应输出目录：
+
+```text
+outputs/genomics_variant_calling/
+├── tables/
+│   ├── candidate_variants.tsv
+│   ├── snp_candidates.tsv
+│   ├── indel_candidates.tsv
+│   ├── kasp_candidate_sites.tsv
+│   └── caps_candidate_sites.tsv
+├── reports/
+│   └── genomics_variant_calling_report.md
+├── logs/
+│   └── run.log
+└── manifest.json
+```
+
+`Variant Quality Summary` 展示 `candidate_variants`、`snps`、`indels`、`pass_variants`、`lowqual_variants`、`pass_snps`、`lowqual_snps`、`pass_indels`、`lowqual_indels`、`kasp_preliminary_pass`、`kasp_low_quality_review_required`、`caps_pass_variant_requires_enzyme_screening` 和 `caps_low_quality_variant_requires_review`。
+
+质量分层含义：
+
+- PASS variants can be prioritized for downstream marker review（PASS 位点可优先进入后续标记开发复核）。
+- LowQual variants are retained for traceability but should not be directly prioritized（LowQual 位点仅作为可追溯候选记录保留，不应直接优先用于标记开发）。
+- This result does not replace WGS/GBS population variant calling（当前结果不能替代 WGS/GBS 群体变异检测）。
+- KASP/CAPS 表只是 preliminary screening，不是最终引物或酶切方案。
+
 ## Integration & Recommendation
 
 该 Tab 当前是已有 DEG integration 输出的展示/汇总入口，不是完整多组学自动整合 workflow。
@@ -243,6 +304,6 @@ docs/gradio_flavonoid_marker_usage.md
 - Gradio 是展示层和 workflow 触发入口，不改变后端 workflow 的分析逻辑。
 - `data/private/` 和 `outputs/` 不应提交 Git。
 - Metabolomics Module 当前不是完整原始质谱重分析。
-- Genomics / GWAS Module 当前不做正式 SNP/InDel calling。
 - `variant_status=not_called` 表示没有最终变异位点，不能伪造 SNP/InDel 坐标。
-- 后续仍需要候选区域 variant calling 和更大群体验证。
+- Genomics Candidate Variant Calling MVP 是候选区域 calling 展示，不替代 WGS/GBS 群体变异检测。
+- 后续仍需要更大群体基因型和黄酮含量数据验证关联。

@@ -29,6 +29,7 @@ Agri Multi-omics Breeding Agent Demo
 | `src/breeding_agent/workflows/rnaseq_deg.py` | Transcriptomics DEG 后端 |
 | `src/breeding_agent/workflows/metabolomics_evidence.py` | Metabolomics 后端 |
 | `src/breeding_agent/workflows/genomics_region.py` | Genomics region 后端 |
+| `src/breeding_agent/workflows/genomics_variant_calling.py` | Genomics Candidate Variant Calling MVP 后端 |
 | `src/breeding_agent/workflows/flavonoid_marker_aggregation.py` | Flavonoid marker 后端 |
 | `src/breeding_agent/integration/flavonoid_marker_package_importer.py` | evidence 生成逻辑 |
 | `docs/gradio_flavonoid_marker_usage.md` | 黄酮标记 Tab 说明 |
@@ -77,10 +78,12 @@ GRADIO_SERVER_PORT
 | `Transcriptomics DEG Module` | `run_deg_analysis()` | `run_rnaseq_deg_task()` |
 | `Metabolomics Module` | `run_metabolomics_evidence_analysis()` | `run_metabolomics_evidence_task()` |
 | `Genomics / GWAS Module` | `run_genomics_region_analysis_ui()` | `run_genomics_region_task()` |
+| `Genomics / GWAS Module` | `run_genomics_variant_calling_ui()` | `run_genomics_variant_calling_task()` |
+| `Genomics / GWAS Module` | `refresh_variant_calling_outputs()` | 读取 `outputs/genomics_variant_calling` 中已有 candidate variant calling 输出 |
 | `Integration & Recommendation` | `build_integration_recommendation()` | 读取 `outputs/gradio_demo_run` 中已有 DEG integration 输出 |
 | `谷子黄酮候选标记推荐` | `generate_flavonoid_evidence()` | `create_evidence_from_package()` |
-| `谷子黄酮候选标记推荐` | `run_flavonoid_marker_recommendation()` | `run_flavonoid_marker_aggregation_task()` |
-| `谷子黄酮候选标记推荐` | `run_flavonoid_full_pipeline()` | 先 evidence，再 aggregation |
+| `谷子黄酮候选标记推荐` | `run_flavonoid_marker_recommendation()` | `run_flavonoid_marker_aggregation_task()`，可选读取 `variant_calling_dir` |
+| `谷子黄酮候选标记推荐` | `run_flavonoid_full_pipeline()` | 先 evidence，再 aggregation，可选读取 `variant_calling_dir` |
 | `谷子黄酮候选标记推荐` | `refresh_flavonoid_outputs()` | 读取已有 flavonoid marker 输出 |
 
 ## 6. 各 Tab 展示内容
@@ -137,11 +140,16 @@ GRADIO_SERVER_PORT
 
 - `dataset_dir`
 - `outdir`
+- Candidate Variant Calling 小节中的 `dataset_dir`
+- `variant_calling_outdir`
 
 按钮：
 
 - `Load Demo Genomics`
 - `Run Genomics Region Analysis`
+- `Load Demo Variant Calling`
+- `Run Variant Calling`
+- `Refresh Variant Results`
 
 输出：
 
@@ -150,8 +158,19 @@ GRADIO_SERVER_PORT
 - `marker_readiness.tsv`
 - `genomics_report.md`
 - `manifest.json`
+- `Variant Quality Summary`
+- `candidate_variants.tsv`
+- `snp_candidates.tsv`
+- `indel_candidates.tsv`
+- `kasp_candidate_sites.tsv`
+- `caps_candidate_sites.tsv`
+- `genomics_variant_calling_report.md`
+- `outputs/genomics_variant_calling/manifest.json`
+- `outputs/genomics_variant_calling/logs/run.log`
 
-该模块不做正式 SNP/InDel calling，不输出最终 SNP/InDel 坐标。`marker_readiness.tsv` 中 `variant_status=not_called` 表示后续仍需候选区域 variant calling。
+Region analysis 仍不输出最终 SNP/InDel 坐标，`marker_readiness.tsv` 中 `variant_status=not_called` 表示 mini 数据包原始状态没有 final variant calling。Candidate Variant Calling 小节调用已有 `samtools`/`bcftools` workflow；如果工具缺失，页面在 `Run Status` 显示清晰错误。`Refresh Variant Results` 只读取已有结果，缺失时提示先运行 `Run Variant Calling`。
+
+PASS variants can be prioritized for downstream marker review（PASS 位点可优先进入后续标记开发复核）。LowQual variants are retained for traceability but should not be directly prioritized（LowQual 位点仅作为可追溯候选记录保留，不应直接优先用于标记开发）。This result does not replace WGS/GBS population variant calling（当前结果不能替代 WGS/GBS 群体变异检测）。
 
 ### Integration & Recommendation
 
@@ -176,6 +195,7 @@ GRADIO_SERVER_PORT
 - `dataset_dir`
 - `evidence_dir`
 - `outdir`
+- `variant_calling_dir`
 
 按钮：
 
@@ -191,8 +211,11 @@ GRADIO_SERVER_PORT
 - `warning / error 信息`
 - `Markdown 报告`
 - `候选标记表`
+- `候选区域变异 calling 证据`
 - `qa_check.json`
 - `manifest.json`
+
+`variant_calling_dir` 可选，默认 `outputs/genomics_variant_calling`。留空或目录不存在时保持原有黄酮推荐流程；目录存在时读取 `candidate_variants.tsv`、`kasp_candidate_sites.tsv` 和 `caps_candidate_sites.tsv`，并在报告中展示三个固定基因的 `variant_evidence_status`、PASS/LowQual、SNP/InDel、KASP preliminary screening 和 CAPS screening 统计。LowQual 不应直接优先用于 KASP/CAPS 开发，KASP/CAPS 表不是最终引物或酶切方案。
 
 ## 7. 普通启动命令
 
@@ -228,6 +251,7 @@ export no_proxy=localhost,127.0.0.1,0.0.0.0
 outputs/gradio_demo_run/
 outputs/gradio_metabolomics_run/
 outputs/gradio_genomics_run/
+outputs/genomics_variant_calling/
 outputs/flavonoid_marker_from_package/
 ```
 
