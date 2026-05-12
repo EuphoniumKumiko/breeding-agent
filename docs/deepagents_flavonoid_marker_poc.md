@@ -1,5 +1,7 @@
 # Deep Agents Flavonoid Marker POC
 
+> Deprecated: 这份 POC 说明已由 `README.md`、`docs/architecture_overview.md` 和 `docs/developer/code_walkthrough_for_meeting.md` 覆盖。Deep Agents 仍只是并行 POC，不是主线入口。
+
 适用读者：需要理解 Deep Agents POC 与 LangGraph 主线关系的同学。  
 阅读目标：明确 Deep Agents 只是并行 POC，不替代 LangGraph，不调用真实 LLM。
 

@@ -25,6 +25,7 @@ def generate_flavonoid_marker_report(
     candidate_rows: list[dict[str, str]],
     literature_rows: list[dict[str, str]],
     warnings: list[str],
+    literature_analysis: dict[str, object] | None = None,
     literature_review_text: str | None = None,
     marker_recommendation_text: str | None = None,
     validation_plan_text: str | None = None,
@@ -42,6 +43,7 @@ def generate_flavonoid_marker_report(
             evidence_dir=evidence_dir,
             candidate_rows=candidate_rows,
             literature_rows=literature_rows,
+            literature_analysis=literature_analysis,
             warnings=warnings,
             literature_review_text=literature_review_text,
             marker_recommendation_text=marker_recommendation_text,
@@ -75,6 +77,7 @@ def render_flavonoid_marker_report(
     candidate_rows: list[dict[str, str]],
     literature_rows: list[dict[str, str]],
     warnings: list[str],
+    literature_analysis: dict[str, object] | None = None,
     literature_review_text: str | None = None,
     marker_recommendation_text: str | None = None,
     validation_plan_text: str | None = None,
@@ -82,7 +85,12 @@ def render_flavonoid_marker_report(
     qa_result: dict[str, object] | None = None,
     variant_calling_dir: Path | None = None,
 ) -> str:
-    """Render the report body."""
+    """Render the report body.
+
+    The Markdown report keeps provenance visible: raw input filenames are shown
+    as traceability markers, not as proof that unprocessed data are being
+    displayed in final outputs.
+    """
 
     rows_by_gene = {
         row.get("gene_id", ""): row
@@ -115,6 +123,7 @@ def render_flavonoid_marker_report(
         "- 基因组：`genome.fa` 和 `genome.gff`，后续 calling 可结合 `genome.bam_compatible.fa.gz` 与 `genome.original_coords.gff`。",
         "- 功能注释：`local_region_emapper_annotations.tsv`，并由 evidence 转换流程整理为 `annotation_evidence.tsv`。",
         "- 文献查阅：读取 `literature_evidence.tsv` 中已核对 DOI 的 seed evidence；本 workflow 不调用外部 API，也不伪造 DOI。",
+        "- 外部文献检索：可选读取 `--literature-results` JSONL；demo fixture 会被标记，不能计入真实 PubMed evidence。",
         "",
         "## 3. 目标候选基因",
         _target_gene_list(ordered_rows),
@@ -149,8 +158,8 @@ def render_flavonoid_marker_report(
             "## 7. 功能注释证据",
             _annotation_table(ordered_rows),
             "",
-            "## 8. 文献查阅过程",
-            _literature_section(literature_rows, literature_review_text),
+            "## 8. 文献查询与分析",
+            _literature_section(literature_rows, literature_review_text, literature_analysis),
             "",
             "## 9. 标记类型推荐：SNP/InDel/KASP/CAPS",
             marker_recommendation_text
@@ -333,6 +342,7 @@ def _annotation_table(rows: list[dict[str, str]]) -> str:
 def _literature_section(
     literature_rows: list[dict[str, str]],
     literature_review_text: str | None,
+    literature_analysis: dict[str, object] | None = None,
 ) -> str:
     if literature_review_text:
         return literature_review_text
@@ -343,8 +353,12 @@ def _literature_section(
             "请补充经过人工核对的文献查阅 evidence。"
         )
 
+    # When the pre-rendered literature review is absent, fall back to a compact
+    # evidence table that still preserves DOI provenance and boundary notes.
     lines = [
-        "本节仅展示 evidence 中已有 DOI，不调用外部 API，不补写未核对 DOI。",
+        "文献查阅过程：本节仅展示 evidence 中已有 DOI，不调用外部 API，不补写未核对 DOI。",
+    "",
+        _literature_analysis_summary(literature_analysis),
         "",
         "| query | title | year | DOI | relevance |",
         "| --- | --- | ---: | --- | --- |",
@@ -360,6 +374,21 @@ def _literature_section(
             )
         )
     return "\n".join(lines)
+
+
+def _literature_analysis_summary(
+    literature_analysis: dict[str, object] | None,
+) -> str:
+    if not literature_analysis:
+        return "- external literature results: 0"
+    return "\n".join(
+        [
+            f"- external literature results: {literature_analysis.get('literature_result_count', 0)}",
+            f"- external query count: {literature_analysis.get('literature_query_count', 0)}",
+            f"- real external result rows: {literature_analysis.get('real_result_count', 0)}",
+            f"- demo fixture rows: {literature_analysis.get('demo_result_count', 0)}（不计入真实 PubMed evidence）",
+        ]
+    )
 
 
 def _marker_recommendation_section(rows: list[dict[str, str]]) -> str:
@@ -419,15 +448,39 @@ def _limitations_section(
 def _qa_section(qa_result: dict[str, object] | None) -> str:
     if qa_result is None:
         return "QA 检查将在报告生成后由 workflow 执行，并写入 `logs/qa_check.json`。"
+    display_result = _qa_result_for_report(qa_result)
     return "\n".join(
         [
             f"- passed: `{qa_result.get('passed')}`",
             "- qa_check.json 内容摘要：",
             "```json",
-            json.dumps(qa_result, ensure_ascii=False, indent=2),
+            json.dumps(display_result, ensure_ascii=False, indent=2),
             "```",
         ]
     )
+
+
+def _qa_result_for_report(qa_result: dict[str, object]) -> dict[str, object]:
+    # Display-only redaction: demo DOI values are replaced in the rendered
+    # report summary so group-meeting material cannot mistake them for evidence.
+    display_result = dict(qa_result)
+    report_demo_dois = display_result.get("report_demo_dois")
+    if isinstance(report_demo_dois, list) and report_demo_dois:
+        display_result["report_demo_dois"] = ["DEMO_ONLY"] * len(report_demo_dois)
+
+    doi_sources = display_result.get("doi_sources")
+    if isinstance(doi_sources, dict):
+        display_sources = dict(doi_sources)
+        for key in ["literature_results_demo", "demo_dois"]:
+            values = display_sources.get(key)
+            if isinstance(values, list) and values:
+                display_sources[key] = ["DEMO_ONLY"] * len(values)
+                display_sources[f"{key}_count"] = len(values)
+        display_sources["demo_boundary"] = (
+            "demo only; excluded from real DOI evidence and report_dois"
+        )
+        display_result["doi_sources"] = display_sources
+    return display_result
 
 
 def _cell(row: dict[str, str], key: str) -> str:

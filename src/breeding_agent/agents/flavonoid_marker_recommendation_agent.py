@@ -1,4 +1,8 @@
-"""Rule-based SNP/InDel/KASP/CAPS recommendation agent."""
+"""Rule-based SNP/InDel/KASP/CAPS recommendation agent.
+
+本文件实现 MarkerRecommendationAgent。它基于 candidate_rows 中的 variant_status 和 variant_evidence_status 生成候选 SNP/InDel/KASP/CAPS 开发建议。
+
+边界：不伪造 SNP/InDel 坐标，不优先推荐 LowQual，不输出最终 KASP 引物或 CAPS 酶切方案，不把 candidate-region calling 写成 WGS/GBS 群体检测。"""
 
 from __future__ import annotations
 
@@ -6,6 +10,7 @@ from breeding_agent.agents.base import AgentOutput, LLMReadyAgentMixin, RuleBase
 from breeding_agent.agents.prompt_templates import marker_recommendation_agent_prompt
 
 
+# MarkerRecommendationAgent 根据 variant 状态生成 bounded 推荐，不虚构坐标。
 class FlavonoidMarkerRecommendationAgent(LLMReadyAgentMixin, RuleBasedAgent):
     """Recommend marker types from candidate evidence and variant status."""
 
@@ -61,6 +66,8 @@ class FlavonoidMarkerRecommendationAgent(LLMReadyAgentMixin, RuleBasedAgent):
         )
 
     def _recommend_for_gene(self, row: dict[str, str]) -> str:
+        # Recommendation text is intentionally bounded by the current calling
+        # status; it never invents coordinates or upgrades LowQual evidence.
         variant_evidence_status = row.get("variant_evidence_status", "")
         if variant_evidence_status == "preliminary_pass_variants_detected":
             return (
@@ -105,6 +112,8 @@ class FlavonoidMarkerRecommendationAgent(LLMReadyAgentMixin, RuleBasedAgent):
         candidate_rows: list[dict[str, str]],
         recommendations_by_gene: dict[str, str],
     ) -> str:
+        # Report text stays preliminary: it recommends marker types and the next
+        # validation step, not final primer/enzyme designs.
         lines = [
             "优先围绕 Si9g04210.1、Si5g31340.1、Si9g34380.1 开发候选 SNP/InDel/KASP 标记，再用更大群体的基因型和黄酮含量数据验证关联。",
             "",

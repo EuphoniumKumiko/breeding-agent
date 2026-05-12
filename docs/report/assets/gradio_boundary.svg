@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1205.274 413.5625" width="1205.274" height="413.5625" style="--bg:#ffffff;--fg:#1f2328;--line:#d1d9e0;--accent:#0969da;--muted:#59636e;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<polyline class="edge" data-from="UI" data-to="DEG" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="201.251,160.41250000000002 222.17900000000003,160.41250000000002 222.17900000000003,58.45 243.10700000000006,58.45" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="UI" data-to="MET" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="201.251,160.41250000000002 222.17900000000003,160.41250000000002 222.17900000000003,123.35000000000001 243.10700000000006,123.35000000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="UI" data-to="GEN" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="201.251,160.41250000000002 222.17900000000003,160.41250000000002 222.17900000000003,188.25 243.10700000000006,188.25" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="UI" data-to="INT" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="201.251,160.41250000000002 222.17900000000003,160.41250000000002 222.17900000000003,253.15000000000003 243.10700000000006,253.15000000000003" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="UI" data-to="FLAV" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="201.251,160.41250000000002 222.17900000000003,160.41250000000002 222.17900000000003,318.05 243.10700000000006,318.05" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="DEG" data-to="W1" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="457.71000000000004,58.44999999999999 481.99800000000005,58.44999999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FLAV" data-to="W2" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="433.25700000000006,318.05 457.62750000000005,318.05 457.62750000000005,225.3125 481.99800000000005,225.3125" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FLAV" data-to="W3" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="433.25700000000006,318.05 457.62750000000005,318.05 457.62750000000005,290.2125 481.99800000000005,290.2125" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FLAV" data-to="STATUS" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="433.25700000000006,318.05 457.62750000000005,318.05 457.62750000000005,355.1125 481.99800000000005,355.1125" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="W1" data-to="OUT1" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="677.335,58.44999999999999 731.191,58.44999999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="W2" data-to="OUT2" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="787.0029999999999,225.3125 848.4129999999999,225.3125" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="W3" data-to="OUT3" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="776.6289999999999,290.21250000000003 848.4129999999999,290.21250000000003" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="node" data-id="UI" data-label="Gradio top-level tabs" data-shape="rectangle">
+  <rect x="40" y="141.9625" width="161.251" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="120.6255" y="160.41250000000002" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Gradio top-level tabs</text>
+</g>
+<g class="node" data-id="DEG" data-label="Transcriptomics DEG Module" data-shape="rectangle">
+  <rect x="243.10700000000006" y="40" width="214.60299999999995" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="350.4085" y="58.45" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Transcriptomics DEG Module</text>
+</g>
+<g class="node" data-id="MET" data-label="Metabolomics Module" data-shape="rectangle">
+  <rect x="243.10700000000006" y="104.9" width="168.661" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="327.43750000000006" y="123.35000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Metabolomics Module</text>
+</g>
+<g class="node" data-id="GEN" data-label="Genomics / GWAS Module" data-shape="rectangle">
+  <rect x="243.10700000000006" y="169.8" width="191.63199999999995" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="338.923" y="188.25" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Genomics / GWAS Module</text>
+</g>
+<g class="node" data-id="INT" data-label="Integration &amp; Recommendation" data-shape="rectangle">
+  <rect x="243.10700000000006" y="234.70000000000002" width="215.34399999999997" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="350.77900000000005" y="253.15000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Integration &amp; Recommendation</text>
+</g>
+<g class="node" data-id="FLAV" data-label="谷子黄酮候选标记推荐" data-shape="rectangle">
+  <rect x="243.10700000000006" y="299.6" width="190.14999999999998" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="338.182" y="318.05" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">谷子黄酮候选标记推荐</text>
+</g>
+<g class="node" data-id="W1" data-label="workflows/rnaseq_deg.py" data-shape="rectangle">
+  <rect x="481.99800000000005" y="40" width="195.33699999999996" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#6B7280" stroke-width="0.75" />
+  <text x="579.6665" y="58.45" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">workflows/rnaseq_deg.py</text>
+</g>
+<g class="node" data-id="W2" data-label="workflows/flavonoid_marker_aggregation.py" data-shape="rectangle">
+  <rect x="481.99800000000005" y="206.8625" width="305.00499999999994" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#6B7280" stroke-width="0.75" />
+  <text x="634.5005" y="225.3125" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">workflows/flavonoid_marker_aggregation.py</text>
+</g>
+<g class="node" data-id="W3" data-label="workflows/flavonoid_marker_langgraph.py" data-shape="rectangle">
+  <rect x="481.99800000000005" y="271.7625" width="294.631" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#6B7280" stroke-width="0.75" />
+  <text x="629.3135" y="290.2125" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">workflows/flavonoid_marker_langgraph.py</text>
+</g>
+<g class="node" data-id="STATUS" data-label="LLM reviewer status display" data-shape="rectangle">
+  <rect x="481.99800000000005" y="336.6625" width="209.41599999999994" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="586.706" y="355.1125" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">LLM reviewer status display</text>
+</g>
+<g class="node" data-id="OUT1" data-label="reports + manifest + logs" data-shape="rectangle">
+  <rect x="731.191" y="40" width="182.73999999999998" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="822.561" y="58.45" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">reports + manifest + logs</text>
+</g>
+<g class="node" data-id="OUT2" data-label="candidate table + report + qa_check" data-shape="rectangle">
+  <rect x="848.4129999999999" y="206.8625" width="250.17100000000002" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="973.4984999999999" y="225.3125" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">candidate table + report + qa_check</text>
+</g>
+<g class="node" data-id="OUT3" data-label="graph_trace + node_decision_table + qa_check" data-shape="rectangle">
+  <rect x="848.4129999999999" y="271.7625" width="322.04799999999994" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="1009.4369999999999" y="290.2125" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">graph_trace + node_decision_table + qa_check</text>
+</g>
+</svg>

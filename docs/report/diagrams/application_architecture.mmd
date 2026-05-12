@@ -1,0 +1,60 @@
+%%{init: {"theme": "base", "themeVariables": {"background": "#FFFFFF", "mainBkg": "#F7F9FB", "clusterBkg": "#F7F9FB", "clusterBorder": "#D6DAE0", "primaryBorderColor": "#6B7280", "primaryTextColor": "#111827", "lineColor": "#6B7280"}}}%%
+flowchart LR
+  classDef input fill:#EAF2F8,stroke:#1F4E79,color:#0B1F33
+  classDef workflow fill:#F7F9FB,stroke:#6B7280,color:#111827
+  classDef output fill:#E8F4EA,stroke:#2F6F3E,color:#102A19
+  classDef limit fill:#FDECEC,stroke:#9B1C1C,color:#3B0A0A
+
+  subgraph Inputs["Local data and evidence"]
+    BAM["bam/ all files"]
+    MET["metabolome_raw_3372.tsv"]
+    GEN["genome.fa + genome.gff"]
+    ANN["local_region_emapper_annotations.tsv"]
+    DOI["verified literature DOI"]
+  end
+
+  subgraph Tasks["Runnable project tasks"]
+    DEG["RNA-seq DEG reproduction"]
+    EVI["Flavonoid evidence package"]
+    VAR["Candidate-region variant calling MVP"]
+    MARKER["Flavonoid candidate marker recommendation"]
+    GRAPH["LangGraph run"]
+  end
+
+  subgraph Outputs["Human-facing outputs"]
+    CAND["candidate gene / marker type table"]
+    REPORT["Markdown report"]
+    TRACE["graph trace + QA JSON + manifest"]
+    UI["Gradio display"]
+  end
+
+  subgraph Boundaries["Current limits"]
+    B1["No final KASP/CAPS marker"]
+    B2["No WGS/GBS population validation"]
+    B3["No wet-lab validation claim"]
+  end
+
+  BAM --> DEG --> EVI
+  MET --> EVI
+  GEN --> EVI
+  ANN --> EVI
+  DOI --> EVI
+  GEN --> VAR
+  BAM --> VAR
+  EVI --> MARKER
+  VAR --> MARKER
+  MARKER --> GRAPH
+  MARKER --> CAND
+  MARKER --> REPORT
+  GRAPH --> TRACE
+  CAND --> UI
+  REPORT --> UI
+  TRACE --> UI
+  MARKER -.current limit.-> B1
+  VAR -.current limit.-> B2
+  REPORT -.current limit.-> B3
+
+  class BAM,MET,GEN,ANN,DOI input
+  class DEG,EVI,VAR,MARKER,GRAPH workflow
+  class CAND,REPORT,TRACE,UI output
+  class B1,B2,B3 limit

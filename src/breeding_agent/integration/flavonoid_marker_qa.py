@@ -13,8 +13,17 @@ NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?(?:e[-+]?\d+)?", re.IGNORECASE)
 DOI_RE = re.compile(r"\b10\.\d{4,9}/[^\s|)]+", re.IGNORECASE)
 
 
-def check_flavonoid_marker_report(report_text: str) -> dict[str, object]:
-    """Check required report content without calling an LLM."""
+def check_flavonoid_marker_report(
+    report_text: str,
+    *,
+    allowed_dois: list[str] | set[str] | None = None,
+    literature_analysis: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Check required report content without calling an LLM.
+
+    This is the report-side guardrail for DOI provenance, gene coverage, and
+    the expected flavonoid marker boundary statements.
+    """
 
     gene_check = {
         gene_id: gene_id in report_text
@@ -30,7 +39,29 @@ def check_flavonoid_marker_report(report_text: str) -> dict[str, object]:
     }
     has_statistics = all(statistics_check.values())
     has_literature_review = "文献查阅" in report_text
-    has_doi = DOI_RE.search(report_text) is not None
+    report_doi_set = {_normalize_doi(doi) for doi in DOI_RE.findall(report_text)}
+    demo_dois = _demo_dois(literature_analysis)
+    # Demo DOIs are tracked for visibility but excluded from real evidence.
+    report_demo_dois = sorted(report_doi_set & demo_dois)
+    report_dois = sorted(report_doi_set - demo_dois)
+    normalized_allowed_dois = (
+        {_normalize_doi(doi) for doi in allowed_dois if _normalize_doi(doi)}
+        if allowed_dois is not None
+        else set()
+    ) - demo_dois
+    evidence_dois = normalized_allowed_dois or _real_evidence_dois(literature_analysis)
+    has_doi = (
+        bool(set(report_dois) & evidence_dois)
+        if evidence_dois
+        else bool(report_dois)
+    )
+    no_llm_generated_doi = True
+    unexpected_dois: list[str] = []
+    if allowed_dois is not None:
+        unexpected_dois = [
+            doi for doi in report_dois if doi not in normalized_allowed_dois
+        ]
+        no_llm_generated_doi = not unexpected_dois
     has_marker_types = all(
         marker_type in report_text
         for marker_type in ["SNP", "InDel", "KASP", "CAPS"]
@@ -56,6 +87,13 @@ def check_flavonoid_marker_report(report_text: str) -> dict[str, object]:
         missing_items.append("missing literature review section")
     if not has_doi:
         missing_items.append("missing DOI value")
+    if not no_llm_generated_doi:
+        missing_items.append("report DOI not present in allowed evidence: " + ", ".join(unexpected_dois))
+    if report_demo_dois:
+        missing_items.append(
+            "demo DOI displayed in report and excluded from real evidence: "
+            + ", ".join(report_demo_dois)
+        )
     if not has_marker_types:
         missing_items.append("missing marker type recommendation")
     optional_variant_checks = _optional_variant_evidence_checks(report_text)
@@ -67,9 +105,12 @@ def check_flavonoid_marker_report(report_text: str) -> dict[str, object]:
         and has_statistics
         and has_literature_review
         and has_doi
+        and no_llm_generated_doi
+        and not report_demo_dois
         and has_marker_types
         and not optional_variant_checks
     )
+    literature_metrics = _literature_metrics(literature_analysis)
 
     return {
         "gene_check": gene_check,
@@ -78,6 +119,12 @@ def check_flavonoid_marker_report(report_text: str) -> dict[str, object]:
         "statistics_check": statistics_check,
         "has_literature_review": has_literature_review,
         "has_doi": has_doi,
+        "report_dois": report_dois,
+        "report_demo_dois": report_demo_dois,
+        "allowed_report_dois": sorted(normalized_allowed_dois),
+        "unexpected_dois": unexpected_dois,
+        "no_llm_generated_doi": no_llm_generated_doi,
+        **literature_metrics,
         "has_marker_types": has_marker_types,
         "optional_variant_checks": optional_variant_checks,
         "passed": passed,
@@ -118,3 +165,67 @@ def _optional_variant_evidence_checks(report_text: str) -> list[str]:
         if not ("不能替代 WGS/GBS" in report_text or "不能替代 WGS" in report_text):
             missing.append("missing WGS/GBS limitation statement")
     return missing
+
+
+def _normalize_doi(doi: str) -> str:
+    normalized = doi.strip().lower()
+    normalized = normalized.rstrip(".,;，。；\"'`")
+    return normalized
+
+
+def _literature_metrics(
+    literature_analysis: dict[str, object] | None,
+) -> dict[str, object]:
+    if not literature_analysis:
+        return {
+            "literature_result_count": 0,
+            "literature_query_count": 0,
+            "literature_relevance_counts": {
+                "high": 0,
+                "medium": 0,
+                "background": 0,
+            },
+            "doi_sources": {},
+        }
+    doi_sources = literature_analysis.get("doi_sources", {})
+    relevance_counts = literature_analysis.get("literature_relevance_counts", {})
+    return {
+        "literature_result_count": literature_analysis.get("literature_result_count", 0),
+        "literature_query_count": literature_analysis.get("literature_query_count", 0),
+        "literature_relevance_counts": (
+            relevance_counts
+            if isinstance(relevance_counts, dict)
+            else {"high": 0, "medium": 0, "background": 0}
+        ),
+        "doi_sources": doi_sources if isinstance(doi_sources, dict) else {},
+    }
+
+
+def _demo_dois(literature_analysis: dict[str, object] | None) -> set[str]:
+    doi_sources = _doi_sources(literature_analysis)
+    demo_values = [
+        *doi_sources.get("literature_results_demo", []),
+        *doi_sources.get("demo_dois", []),
+    ]
+    return {_normalize_doi(str(doi)) for doi in demo_values if _normalize_doi(str(doi))}
+
+
+def _real_evidence_dois(literature_analysis: dict[str, object] | None) -> set[str]:
+    doi_sources = _doi_sources(literature_analysis)
+    evidence_values = [
+        *doi_sources.get("verified_evidence", []),
+        *doi_sources.get("literature_results_real", []),
+    ]
+    return {_normalize_doi(str(doi)) for doi in evidence_values if _normalize_doi(str(doi))}
+
+
+def _doi_sources(literature_analysis: dict[str, object] | None) -> dict[str, list[object]]:
+    if not literature_analysis:
+        return {}
+    doi_sources = literature_analysis.get("doi_sources", {})
+    if not isinstance(doi_sources, dict):
+        return {}
+    normalized: dict[str, list[object]] = {}
+    for key, value in doi_sources.items():
+        normalized[str(key)] = value if isinstance(value, list) else []
+    return normalized

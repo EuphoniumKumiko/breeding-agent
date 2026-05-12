@@ -1,4 +1,10 @@
-"""Rule-based downstream validation plan agent."""
+"""Rule-based downstream validation plan agent.
+
+本文件实现验证方案 agent。它不执行实验验证，而是根据 candidate_rows 生成“后续应该如何验证”的路线。
+
+验证建议覆盖：候选区域 SNP/InDel calling、Sanger 验证、KASP 分型、CAPS/dCAPS 条件验证、更大群体基因型-黄酮含量关联、qRT-PCR 和 LC-MS/MS。
+
+边界：这里输出的是 recommended workflow，不是已完成的群体验证、湿实验验证或最终育种验证。"""
 
 from __future__ import annotations
 
@@ -7,12 +13,13 @@ from breeding_agent.agents.prompt_templates import validation_agent_prompt
 
 
 class FlavonoidValidationAgent(LLMReadyAgentMixin, RuleBasedAgent):
-    """Create a validation plan for flavonoid marker candidates."""
+    """为黄酮候选标记生成下游验证方案的规则 agent。"""
 
     agent_name = "validation_agent"
     prompt_template = validation_agent_prompt
 
     def run(self, candidate_rows: list[dict[str, str]]) -> dict[str, object]:
+        """兼容旧调用方式：直接接收候选行并返回 dict。"""
         result = self._run_rule(candidate_rows)
         return {
             **result,
@@ -20,11 +27,13 @@ class FlavonoidValidationAgent(LLMReadyAgentMixin, RuleBasedAgent):
         }
 
     def run_with_context(self, context: dict[str, object]) -> AgentOutput:
+        """从 context 中读取 candidate_rows 并生成验证方案。"""
         candidate_rows = _as_rows(context.get("candidate_rows", []))
         result = self._run_rule(candidate_rows)
         return self._agent_output(result)
 
     def _run_rule(self, candidate_rows: list[dict[str, str]]) -> dict[str, object]:
+        """提取目标基因列表，并生成 validation_plan_text。"""
         target_genes = [
             row.get("gene_id", "unknown")
             for row in candidate_rows
@@ -51,6 +60,9 @@ class FlavonoidValidationAgent(LLMReadyAgentMixin, RuleBasedAgent):
         )
 
     def _render_validation_plan(self, target_genes: list[str]) -> str:
+        """渲染 Markdown 风格的验证建议文本。"""
+        # The validation plan is downstream guidance only; it summarizes what
+        # should happen after candidate calling and before breeding decisions.
         gene_text = "、".join(target_genes) if target_genes else "候选基因"
         return "\n".join(
             [

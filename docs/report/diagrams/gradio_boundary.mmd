@@ -1,0 +1,27 @@
+%%{init: {"theme": "base", "themeVariables": {"background": "#FFFFFF", "mainBkg": "#F7F9FB", "clusterBkg": "#F7F9FB", "clusterBorder": "#D6DAE0", "primaryBorderColor": "#6B7280", "primaryTextColor": "#111827", "lineColor": "#6B7280"}}}%%
+flowchart LR
+  classDef ui fill:#EAF2F8,stroke:#1F4E79,color:#0B1F33
+  classDef backend fill:#F7F9FB,stroke:#6B7280,color:#111827
+  classDef output fill:#E8F4EA,stroke:#2F6F3E,color:#102A19
+  classDef limit fill:#FDECEC,stroke:#9B1C1C,color:#3B0A0A
+
+  UI["Gradio top-level tabs"] --> DEG["Transcriptomics DEG Module"]
+  UI --> MET["Metabolomics Module"]
+  UI --> GEN["Genomics / GWAS Module"]
+  UI --> INT["Integration & Recommendation"]
+  UI --> FLAV["谷子黄酮候选标记推荐"]
+
+  DEG --> W1["workflows/rnaseq_deg.py"]
+  FLAV --> W2["workflows/flavonoid_marker_aggregation.py"]
+  FLAV --> W3["workflows/flavonoid_marker_langgraph.py"]
+  FLAV --> STATUS["LLM reviewer status display"]
+
+  W1 --> OUT1["reports + manifest + logs"]
+  W2 --> OUT2["candidate table + report + qa_check"]
+  W3 --> OUT3["graph_trace + node_decision_table + qa_check"]
+  STATUS -.does not show.-> CFG["local llm config contents"]
+
+  class UI,DEG,MET,GEN,INT,FLAV ui
+  class W1,W2,W3 backend
+  class OUT1,OUT2,OUT3,STATUS output
+  class CFG limit

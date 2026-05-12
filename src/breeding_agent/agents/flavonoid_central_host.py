@@ -1,4 +1,10 @@
-"""DeepRare-like lightweight central host for flavonoid marker aggregation."""
+"""DeepRare-like lightweight central host for flavonoid marker aggregation.
+
+本文件实现规则版 FlavonoidCentralHost，是非 LangGraph 版的 agent 调度中心。
+
+它按固定顺序执行：evidence 聚合 → agent_context 构建 → LiteratureAgent → MarkerRecommendationAgent → ValidationAgent → ReviewerAgent → FinalQAAgent → 报告文本组装。
+
+边界：不直接做 RNA-seq/代谢组/variant calling，不调用 LLM，不调用外部 API，不生成最终 KASP/CAPS 设计。"""
 
 from __future__ import annotations
 
@@ -25,6 +31,7 @@ from breeding_agent.reports.flavonoid_marker_report import (
 )
 
 
+# CentralHost 是传统串行调度器：负责协调多个规则 agent。
 class FlavonoidCentralHost:
     """Coordinate rule-based flavonoid marker agents without external calls."""
 
@@ -42,6 +49,8 @@ class FlavonoidCentralHost:
         self.variant_calling_dir = variant_calling_dir
 
     def run(self) -> dict[str, object]:
+        """顺序执行规则版黄酮候选标记推荐流程，并返回完整 agent_result。"""
+        # 1. 聚合多组学 evidence，生成 candidate_rows 和 candidate_file。
         aggregation_result = aggregate_flavonoid_marker_candidates(
             evidence_dir=self.evidence_dir,
             outdir=self.outdir,
@@ -49,6 +58,7 @@ class FlavonoidCentralHost:
         )
         candidate_rows = aggregation_result.candidate_rows
         warnings = list(aggregation_result.warnings)
+        # 2. 构建所有 agent 共用的结构化上下文。
         agent_context = build_flavonoid_agent_context(
             evidence_dir=self.evidence_dir,
             candidate_rows=candidate_rows,
@@ -70,10 +80,13 @@ class FlavonoidCentralHost:
         reviewer_agent = FlavonoidReviewerAgent()
         final_qa_agent = FlavonoidFinalQAAgent()
 
+        # 3. 文献分析：生成 DOI 受控的文献综述和 query plan。
         literature_output = literature_agent.run_with_context(agent_context)
         literature_result = literature_output.structured_payload
+        # 4. 标记推荐：生成 SNP/InDel/KASP/CAPS 候选开发建议。
         marker_output = marker_agent.run_with_context(agent_context)
         marker_result = marker_output.structured_payload
+        # 5. 验证方案：生成 Sanger、KASP、CAPS、qRT-PCR、LC-MS/MS 和群体验证建议。
         validation_output = validation_agent.run_with_context(agent_context)
         validation_result = validation_output.structured_payload
         warnings.extend(literature_result.get("warnings", []))
@@ -82,6 +95,7 @@ class FlavonoidCentralHost:
             evidence_dir=self.evidence_dir,
             candidate_rows=candidate_rows,
             literature_rows=literature_result["literature_rows"],
+            literature_analysis=literature_result.get("literature_analysis", {}),
             warnings=warnings,
             literature_review_text=str(literature_result["literature_review_text"]),
             marker_recommendation_text=str(
@@ -93,12 +107,15 @@ class FlavonoidCentralHost:
         reviewer_context = {
             **agent_context,
             "literature_review_text": str(literature_result["literature_review_text"]),
+            "literature_analysis": literature_result.get("literature_analysis", {}),
+            "allowed_report_dois": literature_result.get("allowed_report_dois", []),
             "marker_recommendation_text": str(
                 marker_result["marker_recommendation_text"]
             ),
             "validation_plan_text": str(validation_result["validation_plan_text"]),
             "report_text": base_report_text,
         }
+        # 6. 审阅报告草稿，检查缺失项和过度声称。
         reviewer_output = reviewer_agent.run_with_context(reviewer_context)
         reviewer_result = reviewer_output.structured_payload
         agent_outputs = [
@@ -112,6 +129,8 @@ class FlavonoidCentralHost:
                 "literature_review_text": str(
                     literature_result["literature_review_text"]
                 ),
+                "literature_analysis": literature_result.get("literature_analysis", {}),
+                "allowed_report_dois": literature_result.get("allowed_report_dois", []),
                 "marker_recommendation_text": str(
                     marker_result["marker_recommendation_text"]
                 ),
@@ -123,6 +142,7 @@ class FlavonoidCentralHost:
             evidence_dir=self.evidence_dir,
             candidate_rows=candidate_rows,
             literature_rows=literature_result["literature_rows"],
+            literature_analysis=literature_result.get("literature_analysis", {}),
             warnings=warnings,
             literature_review_text=str(literature_result["literature_review_text"]),
             marker_recommendation_text=str(
@@ -132,6 +152,7 @@ class FlavonoidCentralHost:
             reviewer_notes=str(reviewer_result["reviewer_notes"]),
             variant_calling_dir=aggregation_result.variant_calling_dir,
         )
+        # 7. 对不含 QA section 的报告先做一次最终 QA。
         qa_output = final_qa_agent.run_with_context(
             {**agent_context, "report_text": report_text_without_qa}
         )
@@ -140,6 +161,7 @@ class FlavonoidCentralHost:
             evidence_dir=self.evidence_dir,
             candidate_rows=candidate_rows,
             literature_rows=literature_result["literature_rows"],
+            literature_analysis=literature_result.get("literature_analysis", {}),
             warnings=warnings,
             literature_review_text=str(literature_result["literature_review_text"]),
             marker_recommendation_text=str(
@@ -161,6 +183,7 @@ class FlavonoidCentralHost:
             "candidate_rows": candidate_rows,
             "literature_rows": literature_result["literature_rows"],
             "literature_review_text": literature_result["literature_review_text"],
+            "literature_analysis": literature_result.get("literature_analysis", {}),
             "marker_recommendations": marker_result["recommendations_by_gene"],
             "marker_recommendation_text": marker_result[
                 "marker_recommendation_text"

@@ -1,7 +1,55 @@
 # Workflow 调用链追踪指南
 
+> Deprecated: 这份追踪指南与 `docs/developer/code_walkthrough_for_meeting.md`、`docs/developer/gradio_to_langgraph_call_chain.md` 和 `docs/architecture_overview.md` 重叠。需要快速理解主线时，请优先看 canonical 文档。
+
 适用读者：需要从 CLI、LangGraph、Deep Agents、Gradio 追踪到最终报告的新同学。  
 阅读目标：明确每条主链路的入口、关键函数、输出文件和安全边界。
+
+## 0. Clone 后恢复输入与运行结果
+
+GitHub 仓库不提交 `data/private/`、`outputs/` 和 `configs/llm.local.yaml`。追踪 workflow 前，新同学需要先确认本地已经补齐两类内容：
+
+- 原始 mini 数据包：`data/private/flavonoid_marker_mini_5genes_50kb`
+- runtime artifacts 运行结果包：`outputs/flavonoid_marker_from_package/evidence`、`outputs/genomics_variant_calling`、`outputs/flavonoid_marker_langgraph_llm_real`、`outputs/lobster_external_agent_benchmark`
+
+项目负责人打包原始 mini 数据包：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/flavonoid_marker_mini_5genes_50kb.tar.zst data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+新同学解压并检查：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/flavonoid_marker_mini_5genes_50kb.tar.zst -C .
+ls data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+项目负责人打包 runtime artifacts：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/breeding_agent_demo_runtime_artifacts.tar.zst \
+  outputs/flavonoid_marker_from_package/evidence \
+  outputs/genomics_variant_calling \
+  outputs/flavonoid_marker_langgraph_llm_real \
+  outputs/lobster_external_agent_benchmark
+```
+
+新同学解压并检查：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/breeding_agent_demo_runtime_artifacts.tar.zst -C .
+ls outputs/flavonoid_marker_from_package/evidence
+ls outputs/genomics_variant_calling
+```
+
+完整流程见 `docs/developer/demo_data_restore_guide.md`。
 
 ## 1. 普通黄酮候选标记推荐
 
@@ -61,7 +109,7 @@ outputs/flavonoid_marker_from_package/
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
   --evidence-dir outputs/flavonoid_marker_from_package/evidence \
-  --outdir outputs/flavonoid_marker_langgraph \
+  --outdir outputs/flavonoid_marker_langgraph_jiaqi \
   --variant-calling-dir outputs/genomics_variant_calling
 ```
 
@@ -89,7 +137,7 @@ cli/flavonoid_markers_graph.py
 主要输出：
 
 ```text
-outputs/flavonoid_marker_langgraph/
+outputs/flavonoid_marker_langgraph_jiaqi/
 ├── graph/graph_trace.json
 ├── graph/graph_state_final.json
 ├── graph/node_decision_table.tsv
@@ -101,6 +149,14 @@ outputs/flavonoid_marker_langgraph/
 ```
 
 LangGraph 的作用是编排，不是模型推理。未安装 `langgraph` 时，该 CLI 应给出清晰提示，不影响旧 CLI。
+
+检查 QA：
+
+```bash
+python3 -c "import json; print(json.load(open('outputs/flavonoid_marker_langgraph_jiaqi/logs/qa_check.json'))['passed'])"
+```
+
+期望输出 `True`，对应 `qa_check.json` 中的 `passed=true`。
 
 ## 3. LangGraph + 本地 LLM Reviewer
 

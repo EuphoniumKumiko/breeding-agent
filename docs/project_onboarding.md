@@ -27,11 +27,100 @@
 | 时间 | 任务 | 阅读/操作 |
 | --- | --- | --- |
 | 第 1 小时 | 读架构 | `README.md`、`docs/architecture_overview.md`、`docs/developer/codebase_map.md` |
-| 第 2-3 小时 | 读业务代码地图 | `docs/developer/business_logic_by_file.md`，重点看自己要改的目录 |
+| 第 2-3 小时 | 读业务代码地图 | `docs/developer/document_inventory.md`、`docs/developer/code_walkthrough_for_meeting.md`，重点看自己要改的目录 |
 | 第 4 小时 | 跑普通 CLI | `flavonoid_markers` 或 `genomics_variants`，确认 outputs 和 QA |
 | 第 5 小时 | 跑 LangGraph / LLM Reviewer | 先普通 LangGraph，再按本地环境决定是否跑 `--use-llm-reviewer` |
 | 第 6 小时 | 看 Gradio | 了解每个 Tab 如何调用后端 workflow |
 | 第 7-8 小时 | 选分支任务 | 参考 `docs/developer/agent_parallel_development_guide.md`，一个 Agent 或一个展示区一个分支 |
+
+## Clone 后先补充 Demo 数据
+
+GitHub 仓库不会提交 `data/private/`、`outputs/` 和 `configs/llm.local.yaml`。原因是：
+
+- `data/private/` 包含学长提供的 BAM、FASTA、GFF、代谢组表等私有或较大输入数据。
+- `outputs/` 是本地 workflow 运行结果，可以重新生成或通过 runtime artifacts 包补齐。
+- `configs/llm.local.yaml` 是本地 LLM 服务配置，不能公开。
+
+完整复现谷子黄酮候选标记 demo 需要区分两类包：
+
+- 原始 mini 数据包：`data/private/flavonoid_marker_mini_5genes_50kb`
+- runtime artifacts 运行结果包：`outputs/flavonoid_marker_from_package/evidence`、`outputs/genomics_variant_calling`、`outputs/flavonoid_marker_langgraph_llm_real`、`outputs/lobster_external_agent_benchmark`
+
+项目负责人打包原始 mini 数据包：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/flavonoid_marker_mini_5genes_50kb.tar.zst data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+新同学解压原始 mini 数据包：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/flavonoid_marker_mini_5genes_50kb.tar.zst -C .
+ls data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+项目负责人打包 runtime artifacts：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/breeding_agent_demo_runtime_artifacts.tar.zst \
+  outputs/flavonoid_marker_from_package/evidence \
+  outputs/genomics_variant_calling \
+  outputs/flavonoid_marker_langgraph_llm_real \
+  outputs/lobster_external_agent_benchmark
+```
+
+新同学解压 runtime artifacts：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/breeding_agent_demo_runtime_artifacts.tar.zst -C .
+ls outputs/flavonoid_marker_from_package/evidence
+ls outputs/genomics_variant_calling
+```
+
+有 runtime artifacts 后运行默认 LangGraph：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_jiaqi \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+检查 `qa_check.json` 是否通过：
+
+```bash
+python3 -c "import json; print(json.load(open('outputs/flavonoid_marker_langgraph_jiaqi/logs/qa_check.json'))['passed'])"
+```
+
+期望输出 `True`，对应 JSON 中的 `passed=true`。完整恢复流程见 `docs/developer/demo_data_restore_guide.md`。
+
+家琦第一天 clone + unzip + run 完整命令：
+
+```bash
+cd ~/projects
+git clone <repo-url> breeding-agent
+cd breeding-agent
+
+tar --zstd -xf ~/Downloads/flavonoid_marker_mini_5genes_50kb.tar.zst -C .
+tar --zstd -xf ~/Downloads/breeding_agent_demo_runtime_artifacts.tar.zst -C .
+
+ls data/private/flavonoid_marker_mini_5genes_50kb
+ls outputs/flavonoid_marker_from_package/evidence
+ls outputs/genomics_variant_calling
+
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_jiaqi \
+  --variant-calling-dir outputs/genomics_variant_calling
+
+python3 -c "import json; print(json.load(open('outputs/flavonoid_marker_langgraph_jiaqi/logs/qa_check.json'))['passed'])"
+```
 
 ## 2. 当前已有能力
 
@@ -280,17 +369,26 @@ flavonoid_marker_mini_5genes_50kb/
 data/private/flavonoid_marker_mini_5genes_50kb/
 ```
 
-解压示例：
+项目负责人打包：
 
 ```bash
 cd ~/projects/breeding-agent
-mkdir -p data/private
-tar -xf /path/to/flavonoid_marker_mini_5genes_50kb.tar.gz -C data/private/
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/flavonoid_marker_mini_5genes_50kb.tar.zst data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+新同学解压：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/flavonoid_marker_mini_5genes_50kb.tar.zst -C .
+ls data/private/flavonoid_marker_mini_5genes_50kb
 ```
 
 注意：
 
 - `data/private/` 不提交 Git。
+- `outputs/` 和 `configs/llm.local.yaml` 也不提交 Git。
 - 不要复制 BAM、FASTA、代谢组大表到 `docs/` 或 `src/`。
 - 文档中可以写必要字段、路径和小规模统计摘要，但不要把原始私有数据表完整写进仓库。
 

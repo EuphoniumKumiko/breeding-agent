@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 710.0740000000003 1184.9289999999999" width="710.0740000000003" height="1184.9289999999999" style="--bg:#ffffff;--fg:#1f2328;--line:#d1d9e0;--accent:#0969da;--muted:#59636e;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<polyline class="edge" data-from="DRAFT" data-to="RULE" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="215.3675833333334,76.9 215.3675833333334,124.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="RULE" data-to="BASE" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="215.3675833333334,161.8 215.3675833333334,209.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="BASE" data-to="CFG" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="215.3675833333334,246.70000000000002 215.3675833333334,294.70000000000005" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="CFG" data-to="FINAL" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="no" points="177.32941666666676,484.8908333333333 177.32941666666676,603.229 51,603.229 51,1011.1289999999999 201.0882500000002,1011.1289999999999 201.0882500000002,1023.1289999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="CFG" data-to="LLM" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="yes" points="253.40575000000007,484.8908333333333 253.40575000000007,534.929 366.03700000000015,534.929 366.03700000000015,615.229" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="LLM" data-to="THINK" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="366.03700000000015,652.1289999999999 366.0370000000002,700.1289999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="THINK" data-to="OG" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="366.0370000000002,737.029 366.03700000000015,785.029" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="OG" data-to="MERGE" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="pass" points="264.69133333333343,821.9289999999999 264.69133333333343,857.9289999999999 231.9532500000002,857.9289999999999 231.9532500000002,950.2289999999998" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="OG" data-to="FALLBACK" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="fail / timeout / empty" points="467.38266666666686,821.9289999999999 467.38266666666686,881.9289999999999 500.1207500000001,881.9289999999999 500.12075000000016,950.2289999999998" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="MERGE" data-to="FINAL" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="231.9532500000002,987.1289999999999 231.9532500000002,1023.1289999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FALLBACK" data-to="FINAL" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="500.12075000000016,987.1289999999999 500.12075000000016,1011.1289999999999 262.81825000000015,1011.1289999999999 262.81825000000015,1023.1289999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FINAL" data-to="QA" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="231.9532500000002,1060.0289999999998 231.95325000000017,1108.0289999999998" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="edge-label" data-from="CFG" data-to="FINAL" data-label="no">
+  <rect x="36" y="711.729" width="29.53" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="50.765" y="726.879" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">no</text>
+</g>
+<g class="edge-label" data-from="CFG" data-to="LLM" data-label="yes">
+  <rect x="348.03700000000015" y="541.929" width="35.47" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="365.77200000000016" y="557.079" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">yes</text>
+</g>
+<g class="edge-label" data-from="OG" data-to="MERGE" data-label="pass">
+  <rect x="210.9532500000002" y="864.9289999999999" width="41.41" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="231.65825000000018" y="880.0789999999998" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">pass</text>
+</g>
+<g class="edge-label" data-from="OG" data-to="FALLBACK" data-label="fail / timeout / empty">
+  <rect x="448.1207500000001" y="888.9289999999999" width="103.18600000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="499.7137500000001" y="904.0789999999998" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">fail / timeout / empty</text>
+</g>
+<g class="node" data-id="DRAFT" data-label="Draft report from rule workflow" data-shape="rectangle">
+  <rect x="106.9545833333334" y="40" width="216.826" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="215.3675833333334" y="58.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Draft report from rule workflow</text>
+</g>
+<g class="node" data-id="RULE" data-label="Rule-based ReviewerAgent" data-shape="rectangle">
+  <rect x="114.36458333333343" y="124.9" width="202.00599999999994" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="215.3675833333334" y="143.35000000000002" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">Rule-based ReviewerAgent</text>
+</g>
+<g class="node" data-id="BASE" data-label="Rule reviewer notes" data-shape="rectangle">
+  <rect x="135.85358333333338" y="209.8" width="159.02800000000002" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="215.36758333333339" y="228.25" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">Rule reviewer notes</text>
+</g>
+<g class="node" data-id="CFG" data-label="--use-llm-reviewer enabled?" data-shape="diamond">
+  <polygon points="215.3675833333334,294.70000000000005 329.4820833333334,408.8145 215.3675833333334,522.929 101.25308333333344,408.8145" fill="#FDECEC" stroke="#9B1C1C" stroke-width="0.75" />
+  <text x="215.3675833333334" y="408.8145" text-anchor="middle" font-size="13" font-weight="500" fill="#3B0A0A" dy="4.55">--use-llm-reviewer enabled?</text>
+</g>
+<g class="node" data-id="FINAL" data-label="FinalQAAgent" data-shape="rectangle">
+  <rect x="170.22325000000018" y="1023.1289999999999" width="123.46000000000001" height="36.900000000000006" rx="0" ry="0" fill="#FFF3D6" stroke="#A66A00" stroke-width="0.75" />
+  <text x="231.9532500000002" y="1041.579" text-anchor="middle" font-size="13" font-weight="500" fill="#3B2700" dy="4.55">FinalQAAgent</text>
+</g>
+<g class="node" data-id="LLM" data-label="Local OpenAI-compatible LLM only for reviewer note enhancement" data-shape="rectangle">
+  <rect x="152.03150000000022" y="615.229" width="428.01099999999985" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="366.03700000000015" y="633.6790000000001" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Local OpenAI-compatible LLM only for reviewer note enhancement</text>
+</g>
+<g class="node" data-id="THINK" data-label="chat_template_kwargs.enable_thinking=false" data-shape="rectangle">
+  <rect x="213.16400000000021" y="700.1289999999999" width="305.7459999999999" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="366.03700000000015" y="718.579" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">chat_template_kwargs.enable_thinking=false</text>
+</g>
+<g class="node" data-id="OG" data-label="OutputGuard checks DOI, variant coordinates, LowQual, KASP/CAPS wording, WGS/GBS limitation" data-shape="rectangle">
+  <rect x="62" y="785.029" width="608.0740000000003" height="36.900000000000006" rx="0" ry="0" fill="#FFF3D6" stroke="#A66A00" stroke-width="0.75" />
+  <text x="366.03700000000015" y="803.479" text-anchor="middle" font-size="13" font-weight="500" fill="#3B2700" dy="4.55">OutputGuard checks DOI, variant coordinates, LowQual, KASP/CAPS wording, WGS/GBS limitation</text>
+</g>
+<g class="node" data-id="MERGE" data-label="Merge guarded LLM reviewer notes" data-shape="rectangle">
+  <rect x="104.2742500000002" y="950.2289999999998" width="255.35799999999998" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="231.9532500000002" y="968.6789999999999" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Merge guarded LLM reviewer notes</text>
+</g>
+<g class="node" data-id="FALLBACK" data-label="Fallback to rule ReviewerAgent" data-shape="rectangle">
+  <rect x="387.63225000000017" y="950.2289999999998" width="224.97699999999995" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="500.12075000000016" y="968.6789999999999" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">Fallback to rule ReviewerAgent</text>
+</g>
+<g class="node" data-id="QA" data-label="qa_check.json and manifest status" data-shape="rectangle">
+  <rect x="111.3137500000002" y="1108.0289999999998" width="241.27899999999994" height="36.900000000000006" rx="0" ry="0" fill="#FFF3D6" stroke="#A66A00" stroke-width="0.75" />
+  <text x="231.95325000000017" y="1126.4789999999998" text-anchor="middle" font-size="13" font-weight="500" fill="#3B2700" dy="4.55">qa_check.json and manifest status</text>
+</g>
+</svg>

@@ -1,5 +1,7 @@
 # LLM-ready Agent Interface 设计说明
 
+> Deprecated: 这份说明已被 `docs/architecture_overview.md`、`docs/developer/code_walkthrough_for_meeting.md` 和 `docs/developer/agent_parallel_development_guide.md` 部分覆盖。新同学优先看这些 canonical 文档。
+
 适用读者：准备改 Agent、接本地模型、写 LangGraph node 或维护 Deep Agents POC 的同学。  
 阅读目标：理解当前 Agent 接口、context、prompt、fallback，以及本地 LLM Reviewer 已接入后的边界。
 

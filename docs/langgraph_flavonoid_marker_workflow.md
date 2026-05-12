@@ -1,5 +1,7 @@
 # LangGraph 版谷子黄酮候选标记推荐 workflow
 
+> Deprecated: 这份 LangGraph 说明已被 `docs/developer/code_walkthrough_for_meeting.md`、`docs/developer/gradio_to_langgraph_call_chain.md` 和 `docs/architecture_overview.md` 收敛。若是准备讲解主线，请优先看这些 canonical 文档。
+
 适用读者：需要运行、调试或扩展 LangGraph flavonoid marker workflow 的同学。  
 阅读目标：理解 LangGraph node 设计、输出文件、本地 LLM Reviewer 接入和安全边界。
 

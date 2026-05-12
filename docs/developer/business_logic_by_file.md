@@ -1,5 +1,7 @@
 # 主要业务代码文件逻辑说明
 
+> Deprecated: 这份逐文件说明已被 `docs/architecture_overview.md`、`docs/developer/code_walkthrough_for_meeting.md` 和 `docs/project_onboarding.md` 部分替代。保留为历史参考，新的主入口请优先看 canonical 文档。
+
 适用读者：想系统学习代码、准备认领某个模块开发任务的同学。  
 阅读目标：按文件理解业务职责、输入输出、上下游关系、限制和阅读建议。
 
@@ -1392,7 +1394,7 @@ candidate rows、literature rows、agent 文本、variant calling dir、QA。
 QA、Gradio、老师汇报。
 
 ### 8. 当前限制
-不得声称最终 KASP/CAPS 或实验验证完成。
+不得声称 KASP/CAPS 标记定稿或实验验证完成。
 
 ### 9. 新同学阅读建议
 任何改动都要同步 `flavonoid_marker_qa.py` 和报告测试。

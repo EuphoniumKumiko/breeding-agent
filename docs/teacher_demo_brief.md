@@ -1,5 +1,7 @@
 # Multi-omics Breeding Agent Demo 汇报简报
 
+> Deprecated: 这份简报已被 `README.md`、`docs/project_onboarding.md`、`docs/architecture_overview.md` 和 `docs/developer/current_project_boundary_for_meeting.md` 的最新说明覆盖。它可以作为阶段性汇报素材，但不应作为新人首读材料。
+
 适用读者：准备给老师或学长汇报当前 demo 的同学。  
 阅读目标：用简短材料说明当前完成内容、演示路径和未完成边界。
 

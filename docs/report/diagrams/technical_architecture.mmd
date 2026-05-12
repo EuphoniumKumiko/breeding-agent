@@ -1,0 +1,60 @@
+%%{init: {"theme": "base", "themeVariables": {"background": "#FFFFFF", "mainBkg": "#F7F9FB", "clusterBkg": "#F7F9FB", "clusterBorder": "#D6DAE0", "primaryBorderColor": "#6B7280", "primaryTextColor": "#111827", "lineColor": "#6B7280"}}}%%
+flowchart TB
+  classDef cli fill:#EAF2F8,stroke:#1F4E79,color:#0B1F33
+  classDef core fill:#F7F9FB,stroke:#6B7280,color:#111827
+  classDef agent fill:#E8F4EA,stroke:#2F6F3E,color:#102A19
+  classDef guard fill:#FFF3D6,stroke:#A66A00,color:#3B2700
+  classDef display fill:#FDECEC,stroke:#9B1C1C,color:#3B0A0A
+
+  subgraph Entry["Entry points"]
+    CLI1["cli/deg.py"]
+    CLI2["cli/flavonoid_markers.py"]
+    CLI3["cli/flavonoid_markers_graph.py"]
+    CLI4["cli/genomics_variants.py"]
+    WEB["web/gradio_app.py"]
+  end
+
+  subgraph Backend["Workflow and evidence modules"]
+    WF["workflows/"]
+    INT["integration/"]
+    REP["reports/"]
+    VAL["validators/"]
+    MOD["modules/genomics + modules/metabolomics + modules/promoter"]
+  end
+
+  subgraph AgentLayer["Agent and graph layer"]
+    AG["agents/"]
+    GR["graphs/"]
+    LLM["llm/"]
+  end
+
+  subgraph QA["Risk controls"]
+    OG["output_guard.py"]
+    FQA["FinalQAAgent"]
+    MAN["manifest + qa_check.json"]
+  end
+
+  CLI1 --> WF
+  CLI2 --> WF
+  CLI3 --> GR
+  CLI4 --> WF
+  WEB --> WF
+  WEB --> GR
+  WF --> VAL
+  WF --> MOD
+  WF --> INT
+  INT --> REP
+  GR --> AG
+  AG --> REP
+  LLM --> OG
+  GR --> LLM
+  REP --> FQA
+  OG --> FQA
+  FQA --> MAN
+  WEB -.display only.-> MAN
+
+  class CLI1,CLI2,CLI3,CLI4 cli
+  class WF,INT,REP,VAL,MOD core
+  class AG,GR,LLM agent
+  class OG,FQA,MAN guard
+  class WEB display

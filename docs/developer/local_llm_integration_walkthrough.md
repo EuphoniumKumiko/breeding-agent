@@ -1,5 +1,7 @@
 # 本地 LLM 接入复现指南
 
+> Deprecated: 这份接入复现说明已与 `docs/local_llm_reviewer_agent.md`、`docs/architecture_overview.md` 和 `docs/developer/current_project_boundary_for_meeting.md` 重叠。请优先阅读这些 canonical 文档。
+
 适用读者：需要复现 LM Studio / Qwen 本地 ReviewerAgent 接入的同学。  
 阅读目标：理解本地 LLM 从配置、调用、guard、fallback 到 trace 展示的全过程。
 

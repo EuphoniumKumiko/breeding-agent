@@ -15,6 +15,8 @@ from breeding_agent.workflows.flavonoid_marker_langgraph import (
 
 
 def build_parser() -> argparse.ArgumentParser:
+    # This CLI is a thin wiring layer: it only collects paths/flags and hands
+    # them to the LangGraph workflow wrapper.
     parser = argparse.ArgumentParser(
         prog="python -m breeding_agent.cli.flavonoid_markers_graph",
         description="Run LangGraph-based flavonoid marker recommendation workflow.",
@@ -38,6 +40,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional genomics variant calling output directory.",
     )
     parser.add_argument(
+        "--literature-results",
+        default=None,
+        type=Path,
+        help="Optional normalized literature search JSONL exported by agri-breeding-literature-pipeline.",
+    )
+    parser.add_argument(
         "--use-llm-reviewer",
         action="store_true",
         help="Enable optional local OpenAI-compatible LLM enhancement for ReviewerAgent only.",
@@ -52,6 +60,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Parse CLI inputs, build workflow config, and print the generated artifact
+    # locations for downstream inspection.
     args = build_parser().parse_args(argv)
     config = FlavonoidMarkerLangGraphConfig(
         evidence_dir=args.evidence_dir.expanduser(),
@@ -59,6 +69,11 @@ def main(argv: list[str] | None = None) -> int:
         variant_calling_dir=(
             args.variant_calling_dir.expanduser()
             if args.variant_calling_dir
+            else None
+        ),
+        literature_results=(
+            args.literature_results.expanduser()
+            if args.literature_results
             else None
         ),
         use_llm_reviewer=bool(args.use_llm_reviewer),
@@ -91,6 +106,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"[flavonoid-markers-graph] report: {outputs.get('report')}", flush=True)
     print(f"[flavonoid-markers-graph] qa_check: {outputs.get('qa_check')}", flush=True)
+    print(
+        "[flavonoid-markers-graph] literature_query_plan_jsonl: "
+        f"{outputs.get('literature_query_plan_jsonl')}",
+        flush=True,
+    )
+    print(
+        "[flavonoid-markers-graph] literature_query_plan_tsv: "
+        f"{outputs.get('literature_query_plan_tsv')}",
+        flush=True,
+    )
     print(f"[flavonoid-markers-graph] qa passed: {qa_result.get('passed')}", flush=True)
     llm_metadata = result.get("llm_reviewer", {})
     if isinstance(llm_metadata, dict):

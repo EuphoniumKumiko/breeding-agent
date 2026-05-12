@@ -1,4 +1,8 @@
-"""Rule-based reviewer for flavonoid marker aggregation outputs."""
+"""Rule-based reviewer for flavonoid marker aggregation outputs.
+
+本文件实现 ReviewerAgent，负责审阅报告草稿是否缺失统计值、DOI、验证方案或标记类型，并检查是否伪造变异坐标、过度声称最终育种验证、错误优先推荐 LowQual 或把 preliminary KASP/CAPS 写成最终标记。
+
+它是规则审阅层，不替代人工审阅；如果后续接入 LLM Reviewer，LLM 也只能增强审阅提示，不能新增候选结论。"""
 
 from __future__ import annotations
 
@@ -15,6 +19,7 @@ POSITION_RE = re.compile(
 )
 
 
+# ReviewerAgent 是报告安全审阅层，用规则检查缺失和过度声称。
 class FlavonoidReviewerAgent(LLMReadyAgentMixin, RuleBasedAgent):
     """Check for common over-claiming and evidence omissions."""
 

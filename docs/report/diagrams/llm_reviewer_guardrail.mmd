@@ -1,0 +1,24 @@
+%%{init: {"theme": "base", "themeVariables": {"background": "#FFFFFF", "mainBkg": "#F7F9FB", "clusterBkg": "#F7F9FB", "clusterBorder": "#D6DAE0", "primaryBorderColor": "#6B7280", "primaryTextColor": "#111827", "lineColor": "#6B7280"}}}%%
+flowchart TB
+  classDef rule fill:#E8F4EA,stroke:#2F6F3E,color:#102A19
+  classDef llm fill:#EAF2F8,stroke:#1F4E79,color:#0B1F33
+  classDef guard fill:#FFF3D6,stroke:#A66A00,color:#3B2700
+  classDef stop fill:#FDECEC,stroke:#9B1C1C,color:#3B0A0A
+
+  DRAFT["Draft report from rule workflow"] --> RULE["Rule-based ReviewerAgent"]
+  RULE --> BASE["Rule reviewer notes"]
+  BASE --> CFG{"--use-llm-reviewer enabled?"}
+  CFG -->|no| FINAL["FinalQAAgent"]
+  CFG -->|yes| LLM["Local OpenAI-compatible LLM only for reviewer note enhancement"]
+  LLM --> THINK["chat_template_kwargs.enable_thinking=false"]
+  THINK --> OG["OutputGuard checks DOI, variant coordinates, LowQual, KASP/CAPS wording, WGS/GBS limitation"]
+  OG -->|pass| MERGE["Merge guarded LLM reviewer notes"]
+  OG -->|fail / timeout / empty| FALLBACK["Fallback to rule ReviewerAgent"]
+  MERGE --> FINAL
+  FALLBACK --> FINAL
+  FINAL --> QA["qa_check.json and manifest status"]
+
+  class RULE,BASE,FALLBACK rule
+  class LLM,THINK llm
+  class OG,FINAL,QA guard
+  class CFG stop

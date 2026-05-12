@@ -1,5 +1,7 @@
 # Gradio 工作台后端映射说明
 
+> Deprecated: 这份说明已被 `docs/developer/gradio_to_langgraph_call_chain.md` 和 `docs/architecture_overview.md` 收敛。它只保留为旧版后台映射参考，不再作为新人首读文档。
+
 适用读者：需要维护 Gradio 页面或把新 workflow 接入展示层的同学。  
 阅读目标：理解每个 Tab 调用哪个后端模块、Refresh 如何读输出、哪些逻辑不能写进 Gradio。
 
@@ -18,6 +20,54 @@ src/breeding_agent/web/gradio_app.py
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.web.gradio_app
 ```
+
+## 1.1 Clone 后的 Demo 数据准备
+
+GitHub 不包含 `data/private/`、`outputs/` 和 `configs/llm.local.yaml`。Gradio 页面里的黄酮、variant calling、LangGraph 和 Lobster-style benchmark 展示依赖本地数据或本地运行结果，因此新同学 clone 后需要先补充：
+
+- 原始 mini 数据包：`data/private/flavonoid_marker_mini_5genes_50kb`
+- runtime artifacts 运行结果包：`outputs/flavonoid_marker_from_package/evidence`、`outputs/genomics_variant_calling`、`outputs/flavonoid_marker_langgraph_llm_real`、`outputs/lobster_external_agent_benchmark`
+
+项目负责人打包原始 mini 数据包：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/flavonoid_marker_mini_5genes_50kb.tar.zst data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+新同学解压：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/flavonoid_marker_mini_5genes_50kb.tar.zst -C .
+ls data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+项目负责人打包 runtime artifacts：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/breeding_agent_demo_runtime_artifacts.tar.zst \
+  outputs/flavonoid_marker_from_package/evidence \
+  outputs/genomics_variant_calling \
+  outputs/flavonoid_marker_langgraph_llm_real \
+  outputs/lobster_external_agent_benchmark
+```
+
+新同学解压：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/breeding_agent_demo_runtime_artifacts.tar.zst -C .
+ls outputs/flavonoid_marker_from_package/evidence
+ls outputs/genomics_variant_calling
+ls outputs/flavonoid_marker_langgraph_llm_real
+ls outputs/lobster_external_agent_benchmark
+```
+
+完整 clone + unzip + run 流程见 `docs/developer/demo_data_restore_guide.md`。
 
 ## 2. Tab 与后端 workflow 对应关系
 
@@ -75,6 +125,21 @@ variant_calling_dir = outputs/genomics_variant_calling
 
 ```text
 langgraph_outdir = outputs/flavonoid_marker_langgraph
+```
+
+有 runtime artifacts 后，也可以先从 CLI 生成给家琦单独查看的默认 LangGraph 输出：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_jiaqi \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+检查 QA：
+
+```bash
+python3 -c "import json; print(json.load(open('outputs/flavonoid_marker_langgraph_jiaqi/logs/qa_check.json'))['passed'])"
 ```
 
 按钮：
@@ -162,3 +227,5 @@ Gradio 不负责：
 - 替代 workflow / agents / graphs 的业务逻辑。
 
 新增业务能力时，先实现 CLI / workflow / tests，再接入 Gradio。
+
+Gradio 维护时仍要遵守 Git 边界：不要提交 `data/private/`、`outputs/` 或 `configs/llm.local.yaml`，也不要把 runtime artifacts 复制进 `docs/` 或 `src/`。

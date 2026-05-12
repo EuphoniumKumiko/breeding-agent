@@ -1,0 +1,31 @@
+%%{init: {"theme": "base", "themeVariables": {"background": "#FFFFFF", "mainBkg": "#F7F9FB", "clusterBkg": "#F7F9FB", "clusterBorder": "#D6DAE0", "primaryBorderColor": "#6B7280", "primaryTextColor": "#111827", "lineColor": "#6B7280"}}}%%
+flowchart TB
+  classDef evidence fill:#EAF2F8,stroke:#1F4E79,color:#0B1F33
+  classDef process fill:#F7F9FB,stroke:#6B7280,color:#111827
+  classDef output fill:#E8F4EA,stroke:#2F6F3E,color:#102A19
+  classDef limit fill:#FDECEC,stroke:#9B1C1C,color:#3B0A0A
+
+  T["Transcriptomics statistics"]
+  M["Metabolite correlation evidence"]
+  A["Functional annotation"]
+  L["Literature DOI evidence"]
+  V["Variant evidence or variant_status=not_called"]
+
+  T --> CAND["flavonoid_marker_candidates.tsv"]
+  M --> CAND
+  A --> CAND
+  L --> CAND
+  V --> CAND
+  CAND --> REC["Candidate SNP/InDel/KASP/CAPS type recommendation"]
+  REC --> REPORT["flavonoid_marker_report.md"]
+  REC --> QA["QA checks: fixed genes, statistics, DOI, 群体, no fabricated variants"]
+  QA --> MAN["manifest.json"]
+
+  V -.when not_called.-> NOPOS["No final SNP/InDel positions are reported"]
+  REC -.preliminary only.-> PRELIM["KASP/CAPS screening is not primer or enzyme plan"]
+  REPORT -.requires follow-up.-> POP["Larger population genotype and flavonoid phenotype validation"]
+
+  class T,M,A,L,V evidence
+  class CAND,REC,QA process
+  class REPORT,MAN output
+  class NOPOS,PRELIM,POP limit

@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2870.428 242" width="2870.428" height="242" style="--bg:#ffffff;--fg:#1f2328;--line:#d1d9e0;--accent:#0969da;--muted:#59636e;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, #F7F9FB 60%, var(--bg)));
+    --_text-muted:    var(--muted, #F7F9FB 40%, var(--bg)));
+    --_text-faint:    #F7F9FB 25%, var(--bg));
+    --_line:          var(--line, #F7F9FB 50%, var(--bg)));
+    --_arrow:         var(--accent, #F7F9FB 85%, var(--bg)));
+    --_node-fill:     var(--surface, #F7F9FB 3%, var(--bg)));
+    --_node-stroke:   var(--border, #F7F9FB 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     #F7F9FB 5%, var(--bg));
+    --_inner-stroke:  #F7F9FB 12%, var(--bg));
+    --_key-badge:     #F7F9FB 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="#2E75B6" stroke="#2E75B6" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="#2E75B6" stroke="#2E75B6" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<g class="subgraph" data-id="Prepare" data-label="Prepare evidence and context">
+  <rect x="40" y="40" width="854.3779999999999" height="162" rx="0" ry="0" fill="#FFFFFF" stroke="#D6DAE0" stroke-width="1" />
+  <rect x="40" y="40" width="854.3779999999999" height="28" rx="0" ry="0" fill="#F7F9FB" stroke="#D6DAE0" stroke-width="1" />
+  <text x="52" y="54" font-size="12" font-weight="600" fill="#5B6472" dy="4.199999999999999">Prepare evidence and context</text>
+</g>
+<g class="subgraph" data-id="Agents" data-label="Rule-agent chain">
+  <rect x="914.3779999999998" y="72.55000000000001" width="1174.75" height="96.9" rx="0" ry="0" fill="#FFFFFF" stroke="#D6DAE0" stroke-width="1" />
+  <rect x="914.3779999999998" y="72.55000000000001" width="1174.75" height="28" rx="0" ry="0" fill="#F7F9FB" stroke="#D6DAE0" stroke-width="1" />
+  <text x="926.3779999999998" y="86.55000000000001" font-size="12" font-weight="600" fill="#5B6472" dy="4.199999999999999">Rule-agent chain</text>
+</g>
+<g class="subgraph" data-id="Outputs" data-label="Report and trace outputs">
+  <rect x="2109.1279999999997" y="48" width="721.3" height="146" rx="0" ry="0" fill="#FFFFFF" stroke="#D6DAE0" stroke-width="1" />
+  <rect x="2109.1279999999997" y="48" width="721.3" height="28" rx="0" ry="0" fill="#F7F9FB" stroke="#D6DAE0" stroke-width="1" />
+  <text x="2121.1279999999997" y="62" font-size="12" font-weight="600" fill="#5B6472" dy="4.199999999999999">Report and trace outputs</text>
+</g>
+<polyline class="edge" data-from="CTX" data-to="LIT" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="878.3779999999999,135 894.3779999999999,135 904.3779999999998,135 904.3779999999998,135 914.3779999999998,135 930.3779999999998,135" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FQA" data-to="REPORT" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="2073.1279999999997,135 2089.1279999999997,135 2099.1279999999997,135 2099.1279999999997,135 2109.1279999999997,135 2125.1279999999997,135" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="START" data-to="LOAD" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="158,130.55 206,130.55" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="LOAD" data-to="AGG" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="372.438,126.55 420.438,126.55" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="AGG" data-to="CTX" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="632.818,135 680.818,135" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="LIT" data-to="MARKER" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="1102.7439999999997,135 1150.7439999999997,135" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="MARKER" data-to="VAL" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="1416.4759999999997,135 1464.4759999999997,135" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="VAL" data-to="REV" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="1639.8059999999996,135 1687.8059999999996,135" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="REV" data-to="FQA" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="1860.1719999999996,135 1908.1719999999996,135" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="REPORT" data-to="WRITE" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="2241.178,135 2289.178,135" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="WRITE" data-to="TRACE" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="2446.7239999999997,143.45 2494.7239999999997,143.45" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="TRACE" data-to="END" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="2680.428,139.45 2728.428,139.45" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="node" data-id="START" data-label="START" data-shape="circle">
+  <circle cx="107" cy="139" r="51" fill="#F7F9FB" stroke="#D6DAE0" stroke-width="0.75" />
+  <text x="107" y="139" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">START</text>
+</g>
+<g class="node" data-id="LOAD" data-label="load_evidence_node" data-shape="rectangle">
+  <rect x="206" y="108.1" width="166.438" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#4B5563" stroke-width="0.75" />
+  <text x="289.219" y="126.55" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">load_evidence_node</text>
+</g>
+<g class="node" data-id="AGG" data-label="aggregate_candidates_node" data-shape="rectangle">
+  <rect x="420.438" y="116.55" width="212.37999999999997" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#4B5563" stroke-width="0.75" />
+  <text x="526.6279999999999" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">aggregate_candidates_node</text>
+</g>
+<g class="node" data-id="CTX" data-label="build_agent_context_node" data-shape="rectangle">
+  <rect x="680.818" y="116.55" width="197.55999999999997" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#4B5563" stroke-width="0.75" />
+  <text x="779.598" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">build_agent_context_node</text>
+</g>
+<g class="node" data-id="LIT" data-label="literature_agent_node" data-shape="rectangle">
+  <rect x="930.3779999999998" y="116.55000000000001" width="172.36599999999999" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="1016.5609999999998" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">literature_agent_node</text>
+</g>
+<g class="node" data-id="MARKER" data-label="marker_recommendation_agent_node" data-shape="rectangle">
+  <rect x="1150.7439999999997" y="116.55000000000001" width="265.73199999999997" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="1283.6099999999997" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">marker_recommendation_agent_node</text>
+</g>
+<g class="node" data-id="VAL" data-label="validation_agent_node" data-shape="rectangle">
+  <rect x="1464.4759999999997" y="116.55000000000001" width="175.32999999999998" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="1552.1409999999996" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">validation_agent_node</text>
+</g>
+<g class="node" data-id="REV" data-label="reviewer_agent_node" data-shape="rectangle">
+  <rect x="1687.8059999999996" y="116.55000000000001" width="172.36599999999999" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="1773.9889999999996" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">reviewer_agent_node</text>
+</g>
+<g class="node" data-id="FQA" data-label="final_qa_agent_node" data-shape="rectangle">
+  <rect x="1908.1719999999996" y="116.55000000000001" width="164.95600000000002" height="36.900000000000006" rx="0" ry="0" fill="#FFF3D6" stroke="#A66A00" stroke-width="0.75" />
+  <text x="1990.6499999999996" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#3B2700" dy="4.55">final_qa_agent_node</text>
+</g>
+<g class="node" data-id="REPORT" data-label="report_node" data-shape="rectangle">
+  <rect x="2125.1279999999997" y="116.55" width="116.05" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#4B5563" stroke-width="0.75" />
+  <text x="2183.153" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">report_node</text>
+</g>
+<g class="node" data-id="WRITE" data-label="write_outputs_node" data-shape="rectangle">
+  <rect x="2289.178" y="116.55" width="157.546" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#4B5563" stroke-width="0.75" />
+  <text x="2367.951" y="135" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">write_outputs_node</text>
+</g>
+<g class="node" data-id="TRACE" data-label="graph_trace.json
+node_decision_table.tsv
+qa_check.json" data-shape="rectangle">
+  <rect x="2494.7239999999997" y="108.1" width="185.70399999999998" height="70.7" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="2587.5759999999996" y="143.45" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33"><tspan x="2587.5759999999996" dy="-12.350000000000001">graph_trace.json</tspan><tspan x="2587.5759999999996" dy="16.900000000000002">node_decision_table.tsv</tspan><tspan x="2587.5759999999996" dy="16.900000000000002">qa_check.json</tspan></text>
+</g>
+<g class="node" data-id="END" data-label="END" data-shape="circle">
+  <circle cx="2771.428" cy="131" r="43" fill="#F7F9FB" stroke="#D6DAE0" stroke-width="0.75" />
+  <text x="2771.428" y="131" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">END</text>
+</g>
+</svg>

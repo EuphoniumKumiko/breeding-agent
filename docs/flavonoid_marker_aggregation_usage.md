@@ -1,5 +1,7 @@
 # Flavonoid Marker Aggregation 使用说明
 
+> Deprecated: 这份规则版 aggregation 说明已被 `README.md`、`docs/project_onboarding.md`、`docs/architecture_overview.md` 和 `docs/developer/code_walkthrough_for_meeting.md` 覆盖。当前主线还包含 LiteratureAgent v3，不要只看这里。
+
 适用读者：需要运行或维护普通黄酮候选标记推荐 workflow 的同学。  
 阅读目标：理解规则版 aggregation 的输入输出、Agent 调用和与 LangGraph / LLM Reviewer 的关系。
 

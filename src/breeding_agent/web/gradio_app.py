@@ -1,7 +1,41 @@
-"""Gradio Web Demo for the multi-omics breeding agent."""
+"""Gradio Web Demo for the multi-omics breeding agent.
+
+本文件是 breeding-agent 项目的 Gradio 前端入口。
+
+它的职责不是直接实现生信算法，而是把各个后端 workflow 包装成可点击的 Web 页面：
+
+1. Transcriptomics DEG Module：调用 RNA-seq DEG workflow，展示显著差异基因、报告、manifest 和 run.log；
+2. Metabolomics Module：调用代谢组 evidence workflow，展示候选代谢物、黄酮相关显著代谢物、网络边和 sPLS 系数；
+3. Genomics / GWAS Module：调用基因组候选区域 workflow 和 candidate variant calling workflow；
+4. Integration & Recommendation：读取 transcriptomics DEG 输出的 standardized evidence 和 candidate gene table；
+5. 谷子黄酮候选标记推荐：生成多组学 evidence，运行候选标记推荐流程；
+6. LangGraph Multi-agent Workflow：运行多智能体编排流程，并展示 trace、state、QA、report；
+7. Lobster-style Benchmark：展示 mock/reference 形式的外部 agent 对照结果。
+
+整体调用关系可以理解为：
+
+Gradio 组件和按钮
+    ↓
+本文件中的 UI wrapper 函数
+    ↓
+src/breeding_agent/workflows/* 中的工作流调度层
+    ↓
+src/breeding_agent/modules/*、integration/*、reports/* 中的业务逻辑
+    ↓
+outputs/* 下的 TSV / JSON / Markdown 结果
+    ↓
+本文件中的读取函数再把结果展示回 Gradio 页面
+
+注意边界：
+- Gradio 是展示层和交互层，不是核心算法层；
+- 页面输入通常是服务器本地路径，不是浏览器上传大文件；
+- 大多数按钮函数会捕获异常并把错误信息返回到状态框，避免页面直接崩溃；
+- 结果展示函数主要读取已经生成的文件，不重新计算核心业务结果。
+"""
 
 from __future__ import annotations
 
+# 标准库导入：主要用于读取 TSV/JSON、处理路径、显示异常堆栈和读取环境变量。
 import csv
 import json
 import os
@@ -11,6 +45,7 @@ from typing import Any
 
 import gradio as gr
 
+# 后端业务模块导入：Gradio 按钮不会直接写复杂业务逻辑，而是调用这些 workflow / integration 函数。
 from breeding_agent.integration.flavonoid_marker_package_importer import (
     create_evidence_from_package,
 )
@@ -45,6 +80,11 @@ from breeding_agent.workflows.metabolomics_evidence import (
 from breeding_agent.workflows.rnaseq_deg import RnaSeqDegConfig, run_rnaseq_deg_task
 
 
+# -----------------------------------------------------------------------------
+# 默认路径与页面常量
+# -----------------------------------------------------------------------------
+# 这些常量给 Gradio 页面提供默认值，方便演示时一键加载 demo 数据。
+# 注意：它们通常是服务器本地路径，不是浏览器端路径。
 DEMO_BAM_DIR = (
     "~/projects/TG5_101_mini_deg_50kb_reproduction_package/mini_deg_pipeline/bam"
 )
@@ -61,11 +101,16 @@ FLAVONOID_DEFAULT_EVIDENCE_DIR = "outputs/flavonoid_marker_from_package/evidence
 FLAVONOID_DEFAULT_OUTDIR = "outputs/flavonoid_marker_from_package"
 FLAVONOID_LANGGRAPH_DEFAULT_OUTDIR = DEFAULT_LANGGRAPH_OUTDIR
 FLAVONOID_LLM_CONFIG_DEFAULT = "configs/llm.local.yaml"
+FLAVONOID_LITERATURE_RESULTS_DEFAULT = (
+    "~/projects/agri-breeding-literature-pipeline/exports/literature_search_results.jsonl"
+)
 FLAVONOID_INTERNAL_AGENT_DEFAULT_OUTDIR = "outputs/flavonoid_marker_langgraph_llm_real"
 FLAVONOID_LOBSTER_BENCHMARK_DEFAULT_OUTDIR = DEFAULT_LOBSTER_BENCHMARK_OUTDIR
 METABOLOMICS_DEFAULT_OUTDIR = "outputs/gradio_metabolomics_run"
 GENOMICS_DEFAULT_OUTDIR = "outputs/gradio_genomics_run"
 GENOMICS_VARIANT_DEFAULT_DATASET_DIR = FLAVONOID_DEFAULT_DATASET_DIR
+# Transcriptomics DEG 页面中的性状下拉框选项。
+# 当前 trait 主要作为任务目标标签写入 evidence/report，并不会改变 DEG 统计结果。
 TRAIT_CHOICES = [
     "高产",
     "抗旱",
@@ -74,6 +119,7 @@ TRAIT_CHOICES = [
     "生物胁迫",
     "非生物胁迫",
 ]
+# Integration 页面展示 standardized_evidence.tsv 时优先展示的列。
 STANDARDIZED_EVIDENCE_DISPLAY_COLUMNS = [
     "entity_id",
     "omics_type",
@@ -85,6 +131,7 @@ STANDARDIZED_EVIDENCE_DISPLAY_COLUMNS = [
     "evidence_score",
     "source_module",
 ]
+# Integration 页面中用于提醒用户当前推荐结论边界的说明。
 RECOMMENDATION_REPORT_NOTICE = (
     "注意：当前 trait 来自用户输入的分析目标，尚未接入独立表型数据；"
     "因此本报告不能直接证明候选基因与该性状存在因果关系。"
@@ -92,6 +139,12 @@ RECOMMENDATION_REPORT_NOTICE = (
 
 
 def load_demo_benchmark() -> tuple[str, str, int]:
+    """返回 Transcriptomics DEG demo 所需的 BAM 目录、GFF 文件和线程数。
+
+    该函数绑定到 Gradio 的 “Load Demo Benchmark” 按钮，
+    用于把默认示例路径自动填入页面输入框。
+    """
+
     return (
         DEMO_BAM_DIR,
         DEMO_GFF,
@@ -100,14 +153,20 @@ def load_demo_benchmark() -> tuple[str, str, int]:
 
 
 def load_demo_metabolomics() -> tuple[str, str]:
+    """返回代谢组 demo 的 dataset_dir 和 outdir 默认值。"""
+
     return FLAVONOID_DEFAULT_DATASET_DIR, METABOLOMICS_DEFAULT_OUTDIR
 
 
 def load_demo_genomics() -> tuple[str, str]:
+    """返回基因组候选区域分析 demo 的 dataset_dir 和 outdir 默认值。"""
+
     return FLAVONOID_DEFAULT_DATASET_DIR, GENOMICS_DEFAULT_OUTDIR
 
 
 def load_demo_variant_calling() -> tuple[str, str]:
+    """返回 candidate variant calling demo 的 dataset_dir 和 outdir 默认值。"""
+
     return GENOMICS_VARIANT_DEFAULT_DATASET_DIR, GENOMICS_VARIANT_DEFAULT_OUTDIR
 
 
@@ -121,6 +180,22 @@ def run_deg_analysis(
     outdir: str = DEMO_OUTDIR,
     contrast: str = DEMO_CONTRAST,
 ) -> tuple[str, list[list[str]], str, str, str, str]:
+    """运行 Transcriptomics DEG 模块，并把结果转换成 Gradio 可展示的格式。
+
+    这个函数是 Transcriptomics DEG 页面点击 “Run Transcriptomics Analysis” 后调用的 wrapper。
+
+    参数说明：
+    - trait_selection：页面选择的目标性状；当前只写入 evidence/report 作为标签，不改变 DEG 统计；
+    - bam_dir：BAM 文件目录；真正参与 featureCounts 计数；
+    - gff：基因注释文件；真正参与 featureCounts 注释汇总；
+    - optional_file：当前只显示在 status 中，尚未接入 RNA-seq 生信分析；
+    - threads：featureCounts 使用的线程数；
+    - prefix/outdir/contrast：页面未暴露的高级默认参数。
+
+    返回值顺序必须和 run_button.click(outputs=[...]) 中的组件顺序一致。
+    """
+
+    # 统一展开 ~，确保 Linux/虚拟机环境下路径可解析。
     outdir_path = Path(outdir).expanduser()
     manifest_path = outdir_path / "manifest.json"
     run_log_path = outdir_path / "logs" / "run.log"
@@ -129,6 +204,8 @@ def run_deg_analysis(
     significant_genes_path = outdir_path / "mini_de" / f"{prefix}.significant_genes.tsv"
 
     try:
+        # 构造 RNA-seq DEG workflow 配置对象。
+        # 注意：optional_file 没有进入 RnaSeqDegConfig，因此当前不会影响 DEG 结果。
         config = RnaSeqDegConfig(
             bam_dir=Path(bam_dir).expanduser(),
             gff=Path(gff).expanduser(),
@@ -138,6 +215,7 @@ def run_deg_analysis(
             threads=int(threads),
             outdir=outdir_path,
         )
+        # 调用后端 workflow：这里才会真正执行 featureCounts 和 limma-voom。
         significant_genes = run_rnaseq_deg_task(config)
         status = (
             f"Success. Trait: {trait_selection}. "
@@ -147,6 +225,7 @@ def run_deg_analysis(
     except Exception as exc:
         status = f"Failed: {exc}\n\n{traceback.format_exc()}"
 
+    # 优先展示 integration/recommendation_report.md；如果不存在，则退回展示 DEG report.md。
     report_text = _read_first_existing_text(recommendation_report_path, report_path)
     return (
         status,
@@ -170,6 +249,14 @@ def run_metabolomics_evidence_analysis(
     str,
     str,
 ]:
+    """运行代谢组 evidence workflow，并返回 Gradio 组件需要的展示数据。
+
+    该函数主要做三件事：
+    1. 将页面字符串路径转换为 Path；
+    2. 调用 run_metabolomics_evidence_task() 生成代谢组 evidence 和报告；
+    3. 调用 _build_metabolomics_outputs() 读取输出文件并返回给页面。
+    """
+
     warning_lines = []
     outdir_path = Path(outdir).expanduser()
     try:
@@ -205,6 +292,8 @@ def run_genomics_region_analysis_ui(
     str,
     str,
 ]:
+    """运行基因组候选区域分析，并读取 target regions、annotation、marker readiness 等输出。"""
+
     warning_lines = []
     outdir_path = Path(outdir).expanduser()
     try:
@@ -244,6 +333,11 @@ def run_genomics_variant_calling_ui(
     str,
     str,
 ]:
+    """运行候选区域变异检测，并返回候选变异、SNP/InDel、KASP/CAPS 初筛表。
+
+    MissingToolError 专门用于提示 samtools/bcftools 等命令行工具缺失。
+    """
+
     warning_lines = []
     outdir_path = Path(outdir).expanduser()
     try:
@@ -288,6 +382,8 @@ def refresh_variant_calling_outputs(
     str,
     str,
 ]:
+    """不重新运行 variant calling，只重新读取 outdir 中已有结果。"""
+
     return load_variant_calling_outputs(
         outdir=Path(outdir).expanduser(),
         status="已刷新 candidate variant calling 输出文件。",
@@ -305,6 +401,12 @@ def build_integration_recommendation() -> tuple[
     str,
     str,
 ]:
+    """读取 Transcriptomics DEG 模块产生的 integration 输出并展示推荐结果。
+
+    当前 Integration 页面主要读取固定目录 DEMO_OUTDIR 下的结果，
+    也就是说它依赖用户先运行 Transcriptomics DEG Module。
+    """
+
     outdir_path = Path(DEMO_OUTDIR).expanduser()
     manifest_path = outdir_path / "manifest.json"
     run_log_path = outdir_path / "logs" / "run.log"
@@ -372,6 +474,11 @@ def generate_flavonoid_evidence(
     evidence_dir: str,
     outdir: str,
 ) -> tuple[str, str, str, list[list[str]], str, str, str]:
+    """从黄酮 mini 数据包生成标准 evidence 文件，并读取当前 outdir 展示结果。
+
+    该按钮只负责 evidence 生成，不单独运行 marker recommendation。
+    """
+
     warning_lines = []
     try:
         result = create_evidence_from_package(
@@ -408,6 +515,12 @@ def run_flavonoid_marker_recommendation(
     outdir: str,
     variant_calling_dir: str,
 ) -> tuple[str, str, str, list[list[str]], str, str, str]:
+    """运行黄酮候选标记推荐流程。
+
+    dataset_dir 在这个函数中不直接使用，因为推荐流程读取的是 evidence_dir 中已经生成的 evidence。
+    variant_calling_dir 如果存在，会把候选变异/KASP/CAPS 初筛证据接入推荐流程。
+    """
+
     del dataset_dir
     warning_lines = []
     try:
@@ -441,6 +554,11 @@ def run_flavonoid_full_pipeline(
     outdir: str,
     variant_calling_dir: str,
 ) -> tuple[str, str, str, list[list[str]], str, str, str]:
+    """一键运行 evidence 生成 + 黄酮候选标记推荐。
+
+    这是 Gradio 页面中“一键运行完整流程”按钮对应的函数。
+    """
+
     warning_lines = []
     try:
         evidence_result = create_evidence_from_package(
@@ -478,6 +596,8 @@ def run_flavonoid_full_pipeline(
 def refresh_flavonoid_outputs(
     outdir: str,
 ) -> tuple[str, str, str, list[list[str]], str, str, str]:
+    """不重新运行推荐流程，只刷新读取已有黄酮推荐输出。"""
+
     return _build_flavonoid_outputs(
         outdir=Path(outdir).expanduser(),
         status="已刷新当前输出文件。",
@@ -489,16 +609,39 @@ def run_langgraph_workflow_ui(
     evidence_dir: str,
     outdir: str,
     variant_calling_dir: str,
+    literature_results_path: str,
     use_llm_reviewer: bool,
     llm_config_path: str,
-) -> tuple[str, str, str, str, list[list[str]], str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, list[list[str]], str, str, str, str, str]:
+    """运行 LangGraph 多智能体工作流，并把 trace/state/report/QA 读回 Gradio。
+
+    Gradio 这里只收集用户输入并转发给 workflow wrapper；
+    真正的 LiteratureAgent、MarkerRecommendationAgent、ValidationAgent、ReviewerAgent、
+    FinalQAAgent 等业务逻辑都在后端 workflow 和 agent 模块中。
+    """
+
+    # Gradio only gathers user inputs and forwards them to the workflow wrapper;
+    # the core marker/literature logic stays inside the backend modules.
     warning_lines = []
     outdir_path = Path(outdir).expanduser()
+    # variant_calling_dir 是可选目录：存在时接入候选变异证据，不存在则跳过。
     variant_dir = _optional_existing_dir(variant_calling_dir)
+
+    # literature_results_path 是外部文献 pipeline 导出的 JSONL；不存在时仍可只用内置 verified DOI evidence。
+    literature_results = (
+        Path(literature_results_path).expanduser()
+        if literature_results_path and literature_results_path.strip()
+        else None
+    )
     if variant_calling_dir and variant_dir is None:
         warning_lines.append(
             "variant_calling_dir 不存在或留空，LangGraph workflow 将不接入 variant evidence: "
             f"{variant_calling_dir}"
+        )
+    if literature_results is not None and not literature_results.exists():
+        warning_lines.append(
+            "Literature results JSONL path 不存在；LiteratureAgent v2 将只使用 verified DOI evidence: "
+            f"{literature_results}"
         )
     try:
         result = run_flavonoid_marker_langgraph_task(
@@ -506,6 +649,7 @@ def run_langgraph_workflow_ui(
                 evidence_dir=Path(evidence_dir).expanduser(),
                 outdir=outdir_path,
                 variant_calling_dir=variant_dir,
+                literature_results=literature_results,
                 use_llm_reviewer=bool(use_llm_reviewer),
                 llm_config=(
                     Path(llm_config_path).expanduser()
@@ -543,7 +687,9 @@ def run_langgraph_workflow_ui(
 
 def refresh_langgraph_outputs(
     outdir: str,
-) -> tuple[str, str, str, str, list[list[str]], str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, list[list[str]], str, str, str, str, str]:
+    """不重新运行 LangGraph，只读取已有 graph/report/QA 等输出。"""
+
     return load_langgraph_outputs(
         outdir=Path(outdir).expanduser(),
         status="已刷新 LangGraph workflow 输出文件。",
@@ -557,6 +703,11 @@ def run_lobster_benchmark_ui(
     internal_agent_outdir: str,
     outdir: str,
 ) -> tuple[str, str, str, list[list[str]], str, str]:
+    """运行 Lobster-style reference benchmark，并读取对照报告。
+
+    当前该流程是 mock/reference benchmark，不是真实调用 Lobster AI。
+    """
+
     warning_lines = []
     outdir_path = Path(outdir).expanduser()
     variant_dir = _optional_existing_dir(variant_calling_dir)
@@ -602,6 +753,8 @@ def run_lobster_benchmark_ui(
 def refresh_lobster_benchmark_outputs(
     outdir: str,
 ) -> tuple[str, str, str, list[list[str]], str, str]:
+    """不重新运行 benchmark，只刷新读取已有 Lobster-style 输出。"""
+
     return load_lobster_benchmark_outputs(
         outdir=Path(outdir).expanduser(),
         status="已刷新 Lobster-style benchmark 输出文件。",
@@ -610,6 +763,17 @@ def refresh_lobster_benchmark_outputs(
 
 
 def build_app() -> gr.Blocks:
+    """构建完整 Gradio Web UI。
+
+    该函数只负责声明页面布局、输入输出组件和按钮事件绑定。
+    需要注意：
+    - `with gr.Tab(...)` 定义不同业务页面；
+    - `gr.Textbox`、`gr.DataFrame`、`gr.Markdown` 等定义输入/输出组件；
+    - `button.click(...)` 把按钮和后端 wrapper 函数绑定；
+    - click 的 inputs/outputs 顺序必须和 wrapper 函数参数/返回值顺序一致。
+    """
+
+    # Blocks 是 Gradio 的顶层容器，所有 Tab、Row、Column 和组件都挂在其中。
     with gr.Blocks(title="Agri Multi-omics Breeding Agent Demo") as demo:
         gr.Markdown("# Agri Multi-omics Breeding Agent Demo")
         gr.Markdown(
@@ -618,6 +782,10 @@ def build_app() -> gr.Blocks:
             "region analysis, and flavonoid marker recommendation."
         )
 
+        # ------------------------------------------------------------------
+        # Tab 1: Transcriptomics DEG Module
+        # ------------------------------------------------------------------
+        # RNA-seq 差异表达分析页面：输入 BAM 目录、GFF 注释和线程数，输出 DEG 表、报告、manifest、run.log。
         with gr.Tab("Transcriptomics DEG Module"):
             with gr.Row():
                 with gr.Column():
@@ -659,6 +827,10 @@ def build_app() -> gr.Blocks:
             manifest = gr.Textbox(label="manifest.json", lines=16)
             run_log = gr.Textbox(label="run.log", lines=18)
 
+        # ------------------------------------------------------------------
+        # Tab 2: Metabolomics Module
+        # ------------------------------------------------------------------
+        # 代谢组 evidence 页面：读取 mini 数据包中已经准备好的代谢组结果表并展示。
         with gr.Tab("Metabolomics Module"):
             with gr.Row():
                 with gr.Column():
@@ -715,6 +887,10 @@ def build_app() -> gr.Blocks:
             metabolomics_report = gr.Markdown()
             metabolomics_manifest = gr.Textbox(label="manifest.json", lines=16)
 
+        # ------------------------------------------------------------------
+        # Tab 3: Genomics / GWAS Module
+        # ------------------------------------------------------------------
+        # 基因组候选区域和候选变异检测页面，包括 region analysis 和 variant calling 两部分。
         with gr.Tab("Genomics / GWAS Module"):
             with gr.Row():
                 with gr.Column():
@@ -840,6 +1016,10 @@ def build_app() -> gr.Blocks:
             variant_manifest = gr.Textbox(label="manifest.json", lines=16)
             variant_run_log = gr.Textbox(label="run.log", lines=18)
 
+        # ------------------------------------------------------------------
+        # Tab 4: Integration & Recommendation
+        # ------------------------------------------------------------------
+        # 当前主要读取 Transcriptomics DEG 模块生成的 standardized evidence 和 candidate gene table。
         with gr.Tab("Integration & Recommendation"):
             integration_button = gr.Button("Generate Recommendation", variant="primary")
             gr.Markdown("### Standardized Evidence Table")
@@ -868,6 +1048,13 @@ def build_app() -> gr.Blocks:
             gr.Markdown("### Provenance / Reproducibility")
             provenance_summary = gr.Markdown()
 
+        # ------------------------------------------------------------------
+        # 第一批按钮事件绑定：前四个基础 Tab
+        # ------------------------------------------------------------------
+        # Gradio 的 click 绑定中：
+        # - fn 是按钮点击后调用的 Python 函数；
+        # - inputs 是页面组件输入，顺序对应 fn 参数；
+        # - outputs 是页面组件输出，顺序对应 fn 返回值。
         load_demo.click(
             fn=load_demo_benchmark,
             outputs=[bam_dir, gff, threads],
@@ -950,6 +1137,11 @@ def build_app() -> gr.Blocks:
             ],
         )
 
+        # ------------------------------------------------------------------
+        # Tab 5: 谷子黄酮候选标记推荐
+        # ------------------------------------------------------------------
+        # 这是当前 breeding-agent 项目的核心业务展示页：
+        # 生成多组学 evidence、运行候选标记推荐、运行 LangGraph 多智能体流程、展示 benchmark。
         with gr.Tab("谷子黄酮候选标记推荐"):
             gr.Markdown(
                 "本页面只接收服务器本地路径，不上传 BAM/FASTA 大文件；用于生成 "
@@ -1012,6 +1204,7 @@ def build_app() -> gr.Blocks:
                 flavonoid_qa_json = gr.Textbox(label="qa_check.json", lines=18)
                 flavonoid_manifest_json = gr.Textbox(label="manifest.json", lines=18)
 
+            # LangGraph 多智能体流程区域：展示 graph trace、node decision table、最终报告和 QA。
             gr.Markdown("## LangGraph Multi-agent Workflow（LangGraph 多智能体聚合流程）")
             gr.Markdown(
                 "当前 LangGraph workflow 默认使用现有规则化 agents；勾选本地 LLM Reviewer "
@@ -1029,6 +1222,10 @@ def build_app() -> gr.Blocks:
                     langgraph_outdir = gr.Textbox(
                         label="langgraph_outdir",
                         value=FLAVONOID_LANGGRAPH_DEFAULT_OUTDIR,
+                    )
+                    langgraph_literature_results_path = gr.Textbox(
+                        label="Literature results JSONL path",
+                        value=FLAVONOID_LITERATURE_RESULTS_DEFAULT,
                     )
                     langgraph_use_llm_reviewer = gr.Checkbox(
                         label="Use LLM Reviewer",
@@ -1062,6 +1259,13 @@ def build_app() -> gr.Blocks:
 
             gr.Markdown("### LangGraph Summary（LangGraph 摘要）")
             langgraph_summary = gr.Markdown()
+            gr.Markdown("### LiteratureAgent v2 / 文献查询与分析")
+            gr.Markdown(
+                "LiteratureAgent v2 只读取 verified DOI evidence 与 --literature-results JSONL；"
+                "不调用外部 API；LLM 不能新增 DOI；demo fixture 不计入真实 PubMed evidence。"
+                "\n\n边界：不能声称最终 KASP/CAPS、WGS/GBS 群体验证、湿实验验证。"
+            )
+            langgraph_literature_summary = gr.Markdown()
             gr.Markdown("### Node Decision Table（节点决策表）")
             langgraph_node_decision_table = gr.DataFrame(
                 label="node_decision_table.tsv",
@@ -1084,6 +1288,7 @@ def build_app() -> gr.Blocks:
                 langgraph_qa_json = gr.Textbox(label="qa_check.json", lines=18)
                 langgraph_manifest_json = gr.Textbox(label="manifest.json", lines=18)
 
+            # Lobster-style benchmark 区域：当前是参考/模拟对照，不是真实 Lobster AI 调用。
             gr.Markdown("## Lobster-style External Omics Agent Benchmark")
             gr.Markdown(
                 "当前不是 Lobster AI 真实运行结果，而是 Lobster-style reference benchmark "
@@ -1143,6 +1348,10 @@ def build_app() -> gr.Blocks:
                 lines=18,
             )
 
+        # ------------------------------------------------------------------
+        # 第二批按钮事件绑定：黄酮标记推荐、LangGraph、Lobster-style benchmark
+        # ------------------------------------------------------------------
+        # 为避免重复书写，先把多个按钮共用的 inputs/outputs 组件列表保存成变量。
         flavonoid_button_inputs = [
             flavonoid_dataset_dir,
             flavonoid_evidence_dir,
@@ -1188,6 +1397,7 @@ def build_app() -> gr.Blocks:
             langgraph_qa_status,
             langgraph_llm_status,
             langgraph_summary,
+            langgraph_literature_summary,
             langgraph_node_decision_table,
             langgraph_graph_trace,
             langgraph_graph_state,
@@ -1201,6 +1411,7 @@ def build_app() -> gr.Blocks:
                 flavonoid_evidence_dir,
                 langgraph_outdir,
                 flavonoid_variant_calling_dir,
+                langgraph_literature_results_path,
                 langgraph_use_llm_reviewer,
                 langgraph_llm_config_path,
             ],
@@ -1242,6 +1453,12 @@ def _read_tsv_for_dataframe(
     path: Path,
     display_columns: list[str] | None = None,
 ) -> list[list[str]]:
+    """读取 TSV 文件并转换为 Gradio DataFrame 可接收的 list[list[str]]。
+
+    display_columns 可用于只展示指定列，例如 Integration 页面只显示 evidence 的核心列。
+    如果文件不存在，返回空列表，避免页面组件报错。
+    """
+
     if not path.exists():
         return []
     with path.open("r", encoding="utf-8", newline="") as handle:
@@ -1274,12 +1491,16 @@ def read_text_file(path: Path) -> str:
 
 
 def _read_text(path: Path) -> str:
+    """读取文本文件；文件不存在时返回友好的提示字符串。"""
+
     if not path.exists():
         return f"File not found: {path}"
     return path.read_text(encoding="utf-8", errors="replace")
 
 
 def _read_first_existing_text(*paths: Path) -> str:
+    """按顺序读取第一个存在的文本文件。"""
+
     for path in paths:
         if path.exists():
             return _read_text(path)
@@ -1293,6 +1514,8 @@ def _build_provenance_summary(
     commands_sh_path: Path,
     checksums_sha256_path: Path,
 ) -> str:
+    """构建可复现性文件说明，用于 Integration 页面展示。"""
+
     provenance_files = [
         (manifest_path, "Workflow manifest with inputs, outputs, and run metadata."),
         (run_log_path, "Execution log for validation and external commands."),
@@ -1309,6 +1532,8 @@ def _build_provenance_summary(
 
 
 def _read_json_text(path: Path) -> str:
+    """读取 JSON 文件并格式化显示；如果不是合法 JSON，则退回原始文本。"""
+
     if not path.exists():
         return f"File not found: {path}"
     try:
@@ -1316,6 +1541,50 @@ def _read_json_text(path: Path) -> str:
     except json.JSONDecodeError:
         return path.read_text(encoding="utf-8", errors="replace")
     return json.dumps(data, indent=2, ensure_ascii=False)
+
+
+def _read_gradio_safe_json_text(path: Path) -> str:
+    """读取 JSON 并做 Gradio 展示层脱敏。
+
+    目前主要用于把 demo fixture DOI 显示为 DEMO_ONLY/NA，
+    防止用户误把测试夹具中的假 DOI 当作真实文献证据。
+    """
+
+    if not path.exists():
+        return f"File not found: {path}"
+    try:
+        data: Any = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return path.read_text(encoding="utf-8", errors="replace")
+    return json.dumps(_redact_demo_literature_dois(data), indent=2, ensure_ascii=False)
+
+
+def _redact_demo_literature_dois(value: Any) -> Any:
+    """递归隐藏 demo 文献记录中的 DOI 字段，仅影响 Gradio 展示，不改写磁盘文件。"""
+
+    if isinstance(value, list):
+        return [_redact_demo_literature_dois(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    redacted = {
+        str(key): _redact_demo_literature_dois(item)
+        for key, item in value.items()
+    }
+    is_demo_record = bool(value.get("is_demo")) or value.get("source") == "PubMedFixture"
+    if is_demo_record and "doi" in redacted:
+        redacted["doi"] = "DEMO_ONLY" if value.get("doi") else "NA"
+
+    for key in ["literature_results_demo", "demo_dois", "report_demo_dois"]:
+        original = value.get(key)
+        if isinstance(original, list):
+            redacted[key] = [
+                "DEMO_ONLY" if str(item).strip() else "NA"
+                for item in original
+            ]
+            if original:
+                redacted[f"{key}_count"] = len(original)
+    return redacted
 
 
 def load_variant_calling_outputs(
@@ -1335,6 +1604,8 @@ def load_variant_calling_outputs(
     str,
     str,
 ]:
+    """读取 candidate variant calling 的所有输出并组织成页面返回值。"""
+
     tables_dir = outdir / "tables"
     candidate_path = tables_dir / "candidate_variants.tsv"
     snp_path = tables_dir / "snp_candidates.tsv"
@@ -1398,7 +1669,14 @@ def load_langgraph_outputs(
     outdir: Path,
     status: str,
     warning_lines: list[str],
-) -> tuple[str, str, str, str, list[list[str]], str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, list[list[str]], str, str, str, str, str]:
+    """读取 LangGraph workflow 已生成的 artifact，并返回给 Gradio 页面展示。
+
+    该函数是 display-only，不重新运行任何 agent。
+    """
+
+    # This view function is display-only: it reads finished artifacts and
+    # assembles human-friendly summaries for the Gradio tabs.
     graph_dir = outdir / "graph"
     summary_path = graph_dir / "langgraph_summary.md"
     decision_path = graph_dir / "node_decision_table.tsv"
@@ -1436,13 +1714,141 @@ def load_langgraph_outputs(
             manifest_path=manifest_path,
         ),
         read_text_file(summary_path),
+        _format_literature_v2_summary(
+            qa_path=qa_path,
+            manifest_path=manifest_path,
+            trace_path=trace_path,
+            state_path=state_path,
+            report_path=report_path,
+        ),
         read_tsv_for_display(decision_path),
-        _read_json_text(trace_path),
-        _read_json_text(state_path),
+        _read_gradio_safe_json_text(trace_path),
+        _read_gradio_safe_json_text(state_path),
         read_text_file(report_path),
-        _read_json_text(qa_path),
-        _read_json_text(manifest_path),
+        _read_gradio_safe_json_text(qa_path),
+        _read_gradio_safe_json_text(manifest_path),
     )
+
+
+def _format_literature_v2_summary(
+    *,
+    qa_path: Path,
+    manifest_path: Path,
+    trace_path: Path,
+    state_path: Path,
+    report_path: Path,
+) -> str:
+    """从 QA、manifest、state、trace 中提取 LiteratureAgent v2 的关键指标。"""
+
+    # The literature summary is intentionally compact for the UI; detailed
+    # JSON remains available in the accordion / raw artifact viewers.
+    qa = _mapping_or_empty(_read_json_object(qa_path))
+    manifest = _mapping_or_empty(_read_json_object(manifest_path))
+    state = _mapping_or_empty(_read_json_object(state_path))
+    analysis = _mapping_or_empty(state.get("literature_analysis"))
+    doi_sources = _mapping_or_empty(qa.get("doi_sources"))
+    if not doi_sources:
+        doi_sources = _mapping_or_empty(analysis.get("doi_sources"))
+
+    literature_result_count = _metric_value(
+        qa.get("literature_result_count"),
+        analysis.get("literature_result_count"),
+        "NA",
+    )
+    literature_query_count = _metric_value(
+        qa.get("literature_query_count"),
+        analysis.get("literature_query_count"),
+        "NA",
+    )
+    verified_doi_count = _metric_value(
+        analysis.get("verified_doi_count"),
+        len(_list_or_empty(doi_sources.get("verified_evidence"))),
+        0,
+    )
+    real_result_rows = _metric_value(
+        analysis.get("real_result_count"),
+        "NA",
+        "NA",
+    )
+    demo_fixture_rows = _metric_value(
+        analysis.get("demo_result_count"),
+        "NA",
+        "NA",
+    )
+    no_llm_generated_doi = qa.get("no_llm_generated_doi", "NA")
+    unexpected_dois = _list_or_empty(qa.get("unexpected_dois"))
+    literature_results_path = (
+        manifest.get("literature_results")
+        or state.get("literature_results_path")
+        or "NA"
+    )
+    trace_summary = _literature_trace_summary(trace_path)
+    report_section_status = (
+        "present" if "文献查询与分析" in read_text_file(report_path) else "missing"
+    )
+
+    lines = [
+        "LiteratureAgent v2 只读取 verified DOI evidence 与 `--literature-results` JSONL；"
+        "不调用外部 API；LLM 不能新增 DOI；demo fixture 不计入真实 PubMed evidence。",
+        "",
+        "| metric | value |",
+        "| --- | --- |",
+        f"| literature_results JSONL | `{literature_results_path}` |",
+        f"| report 文献查询与分析章节 | {report_section_status} |",
+        f"| literature_result_count | {literature_result_count} |",
+        f"| literature_query_count | {literature_query_count} |",
+        f"| verified DOI count | {verified_doi_count} |",
+        f"| real external result rows | {real_result_rows} |",
+        f"| demo fixture rows | {demo_fixture_rows} |",
+        f"| no_llm_generated_doi | {no_llm_generated_doi} |",
+        f"| unexpected_dois | {_format_list_for_markdown(unexpected_dois)} |",
+        f"| LiteratureAgent trace | {trace_summary} |",
+        "",
+        "Demo DOI values are displayed as `DEMO_ONLY`/`NA` in Gradio JSON views or summarized by count only.",
+        "边界：不能声称最终 KASP/CAPS、WGS/GBS 群体验证、湿实验验证。",
+    ]
+    return "\n".join(lines)
+
+
+def _literature_trace_summary(trace_path: Path) -> str:
+    """从 graph_trace.json 中查找 literature_agent_node 的输出摘要。"""
+
+    trace = _read_json_object(trace_path)
+    if not isinstance(trace, list):
+        return "NA"
+    for row in trace:
+        if isinstance(row, dict) and row.get("node_name") == "literature_agent_node":
+            return str(row.get("output_summary") or row.get("agent_name") or "present")
+    return "NA"
+
+
+def _mapping_or_empty(value: object) -> dict[str, Any]:
+    """如果 value 是 dict 就返回它，否则返回空 dict，避免大量 isinstance 重复判断。"""
+
+    return value if isinstance(value, dict) else {}
+
+
+def _list_or_empty(value: object) -> list[object]:
+    """如果 value 是 list 就返回它，否则返回空 list。"""
+
+    return value if isinstance(value, list) else []
+
+
+def _metric_value(*values: object) -> object:
+    """返回第一个非 None、非空字符串的指标值；都为空时返回 NA。"""
+
+    for value in values:
+        if value not in (None, ""):
+            return value
+    return "NA"
+
+
+def _format_list_for_markdown(values: list[object]) -> str:
+    """把列表格式化为 Markdown 行内代码形式。"""
+
+    if not values:
+        return "`[]`"
+    return ", ".join(f"`{value}`" for value in values)
 
 
 def load_lobster_benchmark_outputs(
@@ -1451,6 +1857,8 @@ def load_lobster_benchmark_outputs(
     status: str,
     warning_lines: list[str],
 ) -> tuple[str, str, str, list[list[str]], str, str]:
+    """读取 Lobster-style benchmark 的报告、比较矩阵和 manifest。"""
+
     reference_dir = outdir / "lobster_reference"
     comparison_dir = outdir / "comparison"
     report_path = reference_dir / "lobster_style_agent_report.md"
@@ -1485,6 +1893,8 @@ def load_lobster_benchmark_outputs(
 
 
 def _format_lobster_backend_metadata(manifest_path: Path) -> str:
+    """从 benchmark_manifest.json 中提取后端类型信息，强调当前不是 real Lobster run。"""
+
     manifest = _read_json_object(manifest_path)
     if not isinstance(manifest, dict):
         return (
@@ -1511,6 +1921,8 @@ def _format_llm_reviewer_status(
     state_path: Path,
     manifest_path: Path,
 ) -> str:
+    """格式化本地 LLM Reviewer 的使用状态。"""
+
     metadata = _load_llm_reviewer_metadata(
         trace_path=trace_path,
         state_path=state_path,
@@ -1540,6 +1952,8 @@ def _load_llm_reviewer_metadata(
     state_path: Path,
     manifest_path: Path,
 ) -> dict[str, object]:
+    """依次从 trace、state、manifest 中寻找 LLM Reviewer 元数据。"""
+
     trace = _read_json_object(trace_path)
     if isinstance(trace, list):
         for row in trace:
@@ -1570,6 +1984,8 @@ def _load_llm_reviewer_metadata(
 
 
 def _llm_metadata_from_mapping(value: object) -> dict[str, object]:
+    """从 dict 中抽取 LLM Reviewer 展示所需字段。"""
+
     if not isinstance(value, dict):
         return {}
     keys = [
@@ -1584,6 +2000,8 @@ def _llm_metadata_from_mapping(value: object) -> dict[str, object]:
 
 
 def _read_json_object(path: Path) -> object:
+    """读取 JSON 为 Python 对象；失败时返回 None。"""
+
     if not path.exists():
         return None
     try:
@@ -1602,6 +2020,8 @@ def summarize_variant_quality(
     kasp_table: list[list[str]],
     caps_table: list[list[str]],
 ) -> str:
+    """汇总 candidate variant calling 质量统计，生成 Markdown 摘要。"""
+
     counts = _variant_counts_from_manifest(manifest_path)
     if not counts:
         counts = _variant_counts_from_tables(
@@ -1641,6 +2061,8 @@ def summarize_variant_quality(
 
 
 def _variant_counts_from_manifest(manifest_path: Path) -> dict[str, int]:
+    """优先从 manifest.json 中读取变异数量统计。"""
+
     if not manifest_path.exists():
         return {}
     try:
@@ -1665,6 +2087,8 @@ def _variant_counts_from_tables(
     kasp_table: list[list[str]],
     caps_table: list[list[str]],
 ) -> dict[str, int]:
+    """当 manifest 不可用时，从各 TSV 表格内容中重新统计变异数量。"""
+
     candidate_rows = _table_body(candidate_table)
     snp_rows = _table_body(snp_table)
     indel_rows = _table_body(indel_table)
@@ -1704,12 +2128,16 @@ def _variant_counts_from_tables(
 
 
 def _table_body(table: list[list[str]]) -> list[list[str]]:
+    """去掉表头，返回表格数据行。"""
+
     if len(table) <= 1:
         return []
     return table[1:]
 
 
 def _count_table_value(table: list[list[str]], column: str, value: str) -> int:
+    """统计表格中某一列等于指定值的行数。"""
+
     if not table:
         return 0
     header = table[0]
@@ -1720,6 +2148,8 @@ def _count_table_value(table: list[list[str]], column: str, value: str) -> int:
 
 
 def _optional_existing_dir(path_text: str) -> Path | None:
+    """把可选目录字符串转换为 Path；为空或不存在时返回 None。"""
+
     if not path_text or not path_text.strip():
         return None
     path = Path(path_text).expanduser()
@@ -1742,6 +2172,8 @@ def _build_metabolomics_outputs(
     str,
     str,
 ]:
+    """读取代谢组模块输出文件，并按 Gradio outputs 顺序返回。"""
+
     output_dir = outdir / "metabolomics"
     candidate_path = output_dir / "candidate_metabolites.tsv"
     significant_path = output_dir / "flavonoid_related_significant_metabolites.tsv"
@@ -1787,6 +2219,8 @@ def _build_genomics_outputs(
     status: str,
     warning_lines: list[str],
 ) -> tuple[str, list[list[str]], list[list[str]], list[list[str]], str, str]:
+    """读取基因组候选区域模块输出文件，并按 Gradio outputs 顺序返回。"""
+
     output_dir = outdir / "genomics"
     regions_path = output_dir / "target_gene_regions.tsv"
     annotation_path = output_dir / "annotation_summary.tsv"
@@ -1829,6 +2263,8 @@ def _build_flavonoid_outputs(
     status: str,
     warning_lines: list[str],
 ) -> tuple[str, str, str, list[list[str]], str, str, str]:
+    """读取黄酮候选标记推荐输出，包括报告、候选表、QA 和 manifest。"""
+
     report_path = outdir / "reports" / "flavonoid_marker_report.md"
     candidate_path = outdir / "integration" / "flavonoid_marker_candidates.tsv"
     qa_path = outdir / "logs" / "qa_check.json"
@@ -1863,6 +2299,8 @@ def _build_flavonoid_outputs(
 
 
 def _flavonoid_qa_status(qa_path: Path) -> str:
+    """读取 qa_check.json 并生成简短 QA 状态文本。"""
+
     if not qa_path.exists():
         return f"QA 状态未知：文件不存在 {qa_path}"
     try:
@@ -1876,10 +2314,15 @@ def _flavonoid_qa_status(qa_path: Path) -> str:
     return f"passed={passed}; missing_items={missing_items}"
 
 
+# Gradio reload mode 需要顶层存在 demo 变量。
+# 例如：PYTHONPATH=src gradio src/breeding_agent/web/gradio_app.py
+# Gradio 会自动导入该文件并寻找 demo 对象。
 demo = build_app()
 
 
 if __name__ == "__main__":
+    # 直接 python 运行该文件时启动服务；
+    # 也可以通过环境变量覆盖监听地址和端口。
     demo.launch(
         server_name=os.getenv("GRADIO_SERVER_NAME", "0.0.0.0"),
         server_port=int(os.getenv("GRADIO_SERVER_PORT", "7860")),

@@ -14,7 +14,19 @@
 - Gradio 展示层：顶部 `gr.Tab` 工作台。
 - Promoter Design scaffold：任务定义、schema、数据盘点和占位 workflow。
 
-## 2. 当前完成能力
+## 2. 推荐阅读顺序
+
+如果只想先抓住主线，按这个顺序看：
+
+1. `README.md`
+2. `docs/project_onboarding.md`
+3. `docs/architecture_overview.md`
+4. `docs/developer/code_walkthrough_for_meeting.md`
+5. `docs/developer/gradio_to_langgraph_call_chain.md`
+6. `docs/developer/literature_agent_v3_walkthrough.md`
+7. `docs/developer/current_project_boundary_for_meeting.md`
+
+## 3. 当前完成能力
 
 | 能力 | 当前实现状态 |
 | --- | --- |
@@ -29,7 +41,7 @@
 | Gradio LLM 展示 | 已显示 Use LLM Reviewer、LLM Config Path、llm_used / fallback_used / guard_passed / model |
 | Promoter Design scaffold | 已完成任务定义、schema、workflow/CLI 占位输出和数据盘点，不生成真实启动子 |
 
-## 3. 快速开始
+## 4. 快速开始
 
 ```bash
 cd ~/projects/breeding-agent
@@ -48,7 +60,68 @@ PYTHONPATH=src python3 -m breeding_agent.web.gradio_app
 http://127.0.0.1:7860
 ```
 
-## 4. 常用 CLI
+## 5. Clone 后恢复 Demo 数据
+
+GitHub 仓库不包含 `data/private/`、`outputs/` 和 `configs/llm.local.yaml`。这些目录分别对应私有/大型输入数据、本地运行结果和本地 LLM 配置，不能提交到 GitHub。
+
+完整复现谷子黄酮候选标记 demo 需要额外补充两类包：
+
+- 原始 mini 数据包：`data/private/flavonoid_marker_mini_5genes_50kb`
+- runtime artifacts 运行结果包：`outputs/flavonoid_marker_from_package/evidence`、`outputs/genomics_variant_calling`、`outputs/flavonoid_marker_langgraph_llm_real`、`outputs/lobster_external_agent_benchmark`
+
+项目负责人打包原始 mini 数据包：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/flavonoid_marker_mini_5genes_50kb.tar.zst data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+新同学解压原始 mini 数据包：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/flavonoid_marker_mini_5genes_50kb.tar.zst -C .
+ls data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+项目负责人打包 runtime artifacts：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/breeding_agent_demo_runtime_artifacts.tar.zst \
+  outputs/flavonoid_marker_from_package/evidence \
+  outputs/genomics_variant_calling \
+  outputs/flavonoid_marker_langgraph_llm_real \
+  outputs/lobster_external_agent_benchmark
+```
+
+新同学解压 runtime artifacts：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/breeding_agent_demo_runtime_artifacts.tar.zst -C .
+```
+
+有 runtime artifacts 后运行默认 LangGraph：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_jiaqi \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+检查 QA：
+
+```bash
+python3 -c "import json; print(json.load(open('outputs/flavonoid_marker_langgraph_jiaqi/logs/qa_check.json'))['passed'])"
+```
+
+更多 clone + unzip + run 的完整步骤见 `docs/developer/demo_data_restore_guide.md`。
+
+## 6. 常用 CLI
 
 生成黄酮 marker evidence：
 
@@ -116,7 +189,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.promoter_design \
   --outdir outputs/promoter_design_demo
 ```
 
-## 5. Gradio 工作台
+## 7. Gradio 工作台
 
 当前页面使用顶部 `gr.Tab`：
 
@@ -128,7 +201,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.promoter_design \
 
 黄酮 Tab 包含普通推荐、variant evidence、LangGraph workflow、Use LLM Reviewer、LLM Config Path 和 LLM Reviewer Status。Gradio 只是展示层和本地 workflow 触发入口，不改变后端业务逻辑。
 
-## 6. 本地 LLM Reviewer
+## 8. 本地 LLM Reviewer
 
 当前实现：
 
@@ -136,7 +209,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.promoter_design \
 - Debian VM 通过 OpenAI-compatible API 调用。
 - 请求体包含 `chat_template_kwargs.enable_thinking=false`。
 - 只增强 LangGraph `ReviewerAgent`。
-- LLM 不直接生成 SNP/InDel/KASP/CAPS 结论。
+- LLM 不允许引入新的 DOI 值，也不直接生成 SNP/InDel/KASP/CAPS 结论。
 - 输出经过 `output_guard` 和 `FinalQAAgent`。
 - 失败、空内容或 guard 不通过时 fallback 到规则版 ReviewerAgent。
 
@@ -153,7 +226,7 @@ qa_check.json passed=true
 
 本地真实配置 `configs/llm.local.yaml` 不应提交 Git。
 
-## 7. Promoter Design scaffold
+## 9. Promoter Design scaffold
 
 Promoter Design 当前只是 scaffold：
 
@@ -164,11 +237,11 @@ Promoter Design 当前只是 scaffold：
 - 不生成真实启动子序列。
 - 不输出可直接实验使用的 synthetic promoter。
 
-## 8. 当前能力边界
+## 9. 当前能力边界
 
 未完成：
 
-- 最终 KASP 标记开发。
+- KASP 标记定稿。
 - CAPS 酶切方案设计。
 - WGS/GBS 群体变异检测。
 - 大群体基因型-黄酮含量关联验证。
@@ -185,14 +258,15 @@ Promoter Design 当前只是 scaffold：
 - Candidate-region variant calling 不能替代 WGS/GBS 群体变异检测。
 - 不提交 `data/private/`、`outputs/`、`configs/llm.local.yaml`。
 
-## 9. 推荐阅读路径
+## 10. 推荐阅读路径
 
 1. `docs/architecture_overview.md`
 2. `docs/project_onboarding.md`
-3. `docs/developer/codebase_map.md`
-4. `docs/developer/business_logic_by_file.md`
-5. `docs/developer/workflow_tracing_guide.md`
-6. `docs/developer/agent_parallel_development_guide.md`
-7. `docs/developer/local_llm_integration_walkthrough.md`
-8. `docs/developer/gradio_workbench_walkthrough.md`
-9. `docs/developer/testing_and_release_checklist.md`
+3. `docs/developer/demo_data_restore_guide.md`
+4. `docs/developer/codebase_map.md`
+5. `docs/developer/business_logic_by_file.md`
+6. `docs/developer/workflow_tracing_guide.md`
+7. `docs/developer/agent_parallel_development_guide.md`
+8. `docs/developer/local_llm_integration_walkthrough.md`
+9. `docs/developer/gradio_workbench_walkthrough.md`
+10. `docs/developer/testing_and_release_checklist.md`

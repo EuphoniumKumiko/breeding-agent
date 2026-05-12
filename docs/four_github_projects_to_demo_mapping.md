@@ -1,5 +1,7 @@
 # 四个 GitHub 项目对 Agri Multi-omics Breeding Agent Demo 的启发
 
+> Deprecated: 这份外部项目映射已被 `README.md`、`docs/project_onboarding.md` 和 `docs/architecture_overview.md` 的当前主线说明覆盖。它更适合作为阶段性背景材料，而不是新人首读文档。
+
 适用读者：需要向老师解释项目定位、外部项目启发和当前实现边界的同学。  
 阅读目标：把外部项目启发映射到当前 breeding-agent 的真实能力，不夸大未完成部分。
 

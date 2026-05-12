@@ -3,6 +3,8 @@
 适用读者：需要理解项目整体结构、分层边界和当前实现状态的新同学。  
 阅读目标：掌握生信处理层、evidence 层、Agent 层、LangGraph、Deep Agents POC、本地 LLM Reviewer 和 Gradio 的关系。
 
+> Deprecated docs note: 早期的 Gradio walkthrough、code reading guide、Deep Agents 说明和 LLM reviewer 说明已逐步收敛到 `docs/developer/*` 目录下的 canonical 文档。新人优先看本文末尾的阅读顺序。
+
 ## 项目定位
 
 `breeding-agent` 是一个面向谷子多组学育种分析的本地可复现项目。当前能力不再只是 RNA-seq DEG demo，而是覆盖生信数据处理层和智能体聚合分析层：
@@ -16,11 +18,14 @@
 
 新人应优先阅读：
 
-- `README.md`
-- `AGENTS.md`
-- `docs/project_onboarding.md`
-- 本文档
-- `docs/code_reading_guide.md`
+1. `README.md`
+2. `docs/project_onboarding.md`
+3. 本文档
+4. `docs/developer/code_walkthrough_for_meeting.md`
+5. `docs/developer/gradio_to_langgraph_call_chain.md`
+6. `docs/developer/literature_agent_v3_walkthrough.md`
+7. `docs/developer/current_project_boundary_for_meeting.md`
+8. `docs/developer/testing_and_release_checklist.md`
 
 ## 当前已实现能力
 
@@ -48,10 +53,10 @@
 计划中或未完成：
 
 - 完整原始质谱峰表重分析：计划中，当前代谢组模块只读取已有结果表。
-- 最终 KASP 标记开发、CAPS 酶切方案设计、WGS/GBS 群体变异检测和大群体基因型-黄酮含量关联验证：未完成。
+- KASP/CAPS 标记定稿、WGS/GBS 群体变异检测和大群体基因型-黄酮含量关联验证：未完成。
 - 基于大群体基因型和黄酮含量的关联验证：计划中。
 - 外部文献 API 或 LLM 文献检索：未接入，当前只读取已有 `literature_evidence.tsv`。
-- 本地 OpenAI-compatible LLM ReviewerAgent：已接入 LangGraph reviewer node，当前真实运行可显示 `llm_used=true`、`guard_passed=true`、`qa_check.json passed=true`。它只做审阅增强，不生成 SNP/InDel/KASP/CAPS 结论。
+- 本地 OpenAI-compatible LLM ReviewerAgent：已接入 LangGraph reviewer node，当前真实运行可显示 `llm_used=true`、`guard_passed=true`、`qa_check.json passed=true`。它只做审阅增强，不允许引入新的 DOI 值，也不生成 SNP/InDel/KASP/CAPS 结论。
 - 更多 Agent 的 LLM 接入：未完成。ValidationAgent / LiteratureAgent 是后续规划。
 - Promoter generator：未完成。当前只有 scaffold，不训练模型、不生成真实启动子序列。
 

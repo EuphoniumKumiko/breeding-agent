@@ -1,5 +1,7 @@
 # 项目代码地图
 
+> Deprecated: 这份代码地图已被 `docs/architecture_overview.md`、`docs/project_onboarding.md` 和 `docs/developer/code_walkthrough_for_meeting.md` 收敛。若只是想快速上手，请先读这些 canonical 文档。
+
 适用读者：新加入项目的同学、需要并行开发 Agent / workflow / Gradio 展示的开发者。  
 阅读目标：用一份文档理解 `breeding-agent` 的目录职责、上下游关系和当前架构分层。
 

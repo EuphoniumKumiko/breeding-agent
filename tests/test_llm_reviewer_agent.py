@@ -125,6 +125,36 @@ class TestLLMReviewerAgent(unittest.TestCase):
         )
         self.assertTrue(result.passed, result.reasons)
 
+    def test_output_guard_excludes_demo_fixture_doi(self) -> None:
+        context = {
+            "allowed_report_dois": ["10.3390/life11060578"],
+            "literature_results": [
+                {
+                    "doi": "10.1000/demo.fixture",
+                    "source": "PubMedFixture",
+                    "is_demo": True,
+                }
+            ],
+            "literature_analysis": {
+                "doi_sources": {
+                    "literature_results_demo": ["10.1000/demo.fixture"],
+                    "allowed_report_dois": ["10.3390/life11060578"],
+                }
+            },
+        }
+        result = guard_reviewer_output(
+            content=(
+                "不应把 DOI 10.1000/demo.fixture 当作真实 evidence。"
+                "LowQual 位点不应直接优先用于开发。"
+                "preliminary KASP/CAPS screening 不是最终标记或最终引物。"
+                "当前结果不能替代 WGS/GBS 群体变异检测。"
+            ),
+            context=context,
+        )
+
+        self.assertFalse(result.passed)
+        self.assertTrue(any("fabricated_doi" in reason for reason in result.reasons))
+
     def test_executor_falls_back_on_empty_content(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "llm.yaml"

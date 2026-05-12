@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1273.166 456.5" width="1273.166" height="456.5" style="--bg:#ffffff;--fg:#1f2328;--line:#d1d9e0;--accent:#0969da;--muted:#59636e;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<polyline class="edge" data-from="T" data-to="CAND" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="136.92749999999995,88.9 136.92749999999995,106.9 599.9034999999999,106.9 599.9034999999999,124.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="M" data-to="CAND" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="375.08449999999993,88.9 375.08449999999993,106.9 599.9034999999999,106.9 599.9034999999999,124.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="A" data-to="CAND" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="599.9034999999999,88.9 599.9034999999999,106.9 599.9034999999999,106.9 599.9034999999999,124.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="L" data-to="CAND" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="802.122,88.9 802.122,106.9 599.9034999999999,106.9 599.9034999999999,124.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="V" data-to="CAND" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="1076.9584999999997,88.9 1076.9584999999997,106.9 599.9034999999999,106.9 599.9034999999999,124.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="CAND" data-to="REC" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="599.9034999999999,161.8 599.9034999999999,209.8" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="REC" data-to="REPORT" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="599.9034999999999,246.70000000000002 599.9034999999999,270.70000000000005 426.17625,270.70000000000005 426.17625,294.70000000000005" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="REC" data-to="QA" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="599.9034999999999,246.70000000000002 599.9034999999999,270.70000000000005 773.6307499999998,270.70000000000005 773.6307499999998,294.70000000000005" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="QA" data-to="MAN" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="773.6307499999998,331.6 773.6307499999998,379.6" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="node" data-id="T" data-label="Transcriptomics statistics" data-shape="rectangle">
+  <rect x="40" y="52" width="193.85499999999993" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="136.92749999999995" y="70.45" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Transcriptomics statistics</text>
+</g>
+<g class="node" data-id="M" data-label="Metabolite correlation evidence" data-shape="rectangle">
+  <rect x="261.8549999999999" y="52" width="226.459" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="375.08449999999993" y="70.45" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Metabolite correlation evidence</text>
+</g>
+<g class="node" data-id="A" data-label="Functional annotation" data-shape="rectangle">
+  <rect x="516.3139999999999" y="52" width="167.179" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="599.9034999999999" y="70.45" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Functional annotation</text>
+</g>
+<g class="node" data-id="L" data-label="Literature DOI evidence" data-shape="rectangle">
+  <rect x="711.4929999999999" y="52" width="181.25799999999998" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="802.122" y="70.45" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Literature DOI evidence</text>
+</g>
+<g class="node" data-id="V" data-label="Variant evidence or variant_status=not_called" data-shape="rectangle">
+  <rect x="920.7509999999999" y="52" width="312.41499999999996" height="36.900000000000006" rx="0" ry="0" fill="#EAF2F8" stroke="#1F4E79" stroke-width="0.75" />
+  <text x="1076.9584999999997" y="70.45" text-anchor="middle" font-size="13" font-weight="500" fill="#0B1F33" dy="4.55">Variant evidence or variant_status=not_called</text>
+</g>
+<g class="node" data-id="CAND" data-label="flavonoid_marker_candidates.tsv" data-shape="rectangle">
+  <rect x="480.37549999999993" y="124.9" width="239.05599999999995" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#6B7280" stroke-width="0.75" />
+  <text x="599.9034999999999" y="143.35000000000002" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">flavonoid_marker_candidates.tsv</text>
+</g>
+<g class="node" data-id="REC" data-label="Candidate SNP/InDel/KASP/CAPS type recommendation" data-shape="rectangle">
+  <rect x="415.90849999999995" y="209.8" width="367.98999999999995" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#6B7280" stroke-width="0.75" />
+  <text x="599.9034999999999" y="228.25" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">Candidate SNP/InDel/KASP/CAPS type recommendation</text>
+</g>
+<g class="node" data-id="REPORT" data-label="flavonoid_marker_report.md" data-shape="rectangle">
+  <rect x="321.46825" y="294.70000000000005" width="209.41599999999994" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="426.17625" y="313.15000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">flavonoid_marker_report.md</text>
+</g>
+<g class="node" data-id="QA" data-label="QA checks: fixed genes, statistics, DOI, 群体, no fabricated variants" data-shape="rectangle">
+  <rect x="558.88425" y="294.70000000000005" width="429.49299999999977" height="36.900000000000006" rx="0" ry="0" fill="#F7F9FB" stroke="#6B7280" stroke-width="0.75" />
+  <text x="773.6307499999998" y="313.15000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="#111827" dy="4.55">QA checks: fixed genes, statistics, DOI, 群体, no fabricated variants</text>
+</g>
+<g class="node" data-id="MAN" data-label="manifest.json" data-shape="rectangle">
+  <rect x="714.8647499999998" y="379.6" width="117.53200000000001" height="36.900000000000006" rx="0" ry="0" fill="#E8F4EA" stroke="#2F6F3E" stroke-width="0.75" />
+  <text x="773.6307499999998" y="398.05" text-anchor="middle" font-size="13" font-weight="500" fill="#102A19" dy="4.55">manifest.json</text>
+</g>
+</svg>

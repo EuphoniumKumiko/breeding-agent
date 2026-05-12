@@ -1,5 +1,7 @@
 # Gradio Workbench 模块导读
 
+> Deprecated: 这份模块说明已被 `docs/developer/gradio_to_langgraph_call_chain.md` 和 `docs/architecture_overview.md` 收敛。它更适合旧版页面映射，不建议新人优先阅读。
+
 适用读者：维护 Gradio 展示层或准备把新 workflow 接入页面的同学。  
 阅读目标：理解当前 Tab 结构、后端映射、LLM Reviewer 状态展示和 Gradio 的边界。
 

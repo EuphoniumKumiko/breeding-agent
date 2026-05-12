@@ -42,7 +42,70 @@ python3 -m py_compile \
 
 如果只改 Markdown，说明“不适用，因为没有修改 Python 文件”。
 
-## 3. unittest 模板
+## 3. Demo 数据恢复包检查
+
+GitHub 不包含 `data/private/`、`outputs/` 和 `configs/llm.local.yaml`。需要让家琦或其他同学复现 demo 时，明确交付两类额外包：
+
+- 原始 mini 数据包：`data/private/flavonoid_marker_mini_5genes_50kb`
+- runtime artifacts 运行结果包：`outputs/flavonoid_marker_from_package/evidence`、`outputs/genomics_variant_calling`、`outputs/flavonoid_marker_langgraph_llm_real`、`outputs/lobster_external_agent_benchmark`
+
+项目负责人打包原始 mini 数据包：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/flavonoid_marker_mini_5genes_50kb.tar.zst data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+新同学解压并检查：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/flavonoid_marker_mini_5genes_50kb.tar.zst -C .
+ls data/private/flavonoid_marker_mini_5genes_50kb
+```
+
+项目负责人打包 runtime artifacts：
+
+```bash
+cd ~/projects/breeding-agent
+mkdir -p ~/transfer
+tar --zstd -cf ~/transfer/breeding_agent_demo_runtime_artifacts.tar.zst \
+  outputs/flavonoid_marker_from_package/evidence \
+  outputs/genomics_variant_calling \
+  outputs/flavonoid_marker_langgraph_llm_real \
+  outputs/lobster_external_agent_benchmark
+```
+
+新同学解压并检查：
+
+```bash
+cd ~/projects/breeding-agent
+tar --zstd -xf ~/Downloads/breeding_agent_demo_runtime_artifacts.tar.zst -C .
+ls outputs/flavonoid_marker_from_package/evidence
+ls outputs/genomics_variant_calling
+ls outputs/flavonoid_marker_langgraph_llm_real
+ls outputs/lobster_external_agent_benchmark
+```
+
+有 runtime artifacts 后运行默认 LangGraph：
+
+```bash
+PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
+  --evidence-dir outputs/flavonoid_marker_from_package/evidence \
+  --outdir outputs/flavonoid_marker_langgraph_jiaqi \
+  --variant-calling-dir outputs/genomics_variant_calling
+```
+
+检查 `qa_check.json passed=true`：
+
+```bash
+python3 -c "import json; print(json.load(open('outputs/flavonoid_marker_langgraph_jiaqi/logs/qa_check.json'))['passed'])"
+```
+
+完整 clone + unzip + run 命令见 `docs/developer/demo_data_restore_guide.md`。
+
+## 4. unittest 模板
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests
@@ -50,7 +113,7 @@ PYTHONPATH=src python3 -m unittest discover -s tests
 
 不要在文档中硬编码测试数量；以实际运行输出为准。
 
-## 4. 旧黄酮推荐 CLI
+## 5. 旧黄酮推荐 CLI
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
@@ -73,7 +136,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers \
 cat outputs/flavonoid_marker_from_package/logs/qa_check.json
 ```
 
-## 5. LangGraph CLI
+## 6. LangGraph CLI
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
@@ -88,7 +151,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
 LangGraph is not installed. Install with: pip install langgraph
 ```
 
-## 6. LangGraph + LLM Reviewer CLI
+## 7. LangGraph + LLM Reviewer CLI
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_graph \
@@ -113,7 +176,7 @@ cat outputs/flavonoid_marker_langgraph_llm_real/logs/qa_check.json
 - output_guard 和 FinalQAAgent 仍生效。
 - 不直接生成 SNP/InDel/KASP/CAPS 结论。
 
-## 7. Deep Agents POC CLI
+## 8. Deep Agents POC CLI
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_deepagents \
@@ -124,7 +187,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.flavonoid_markers_deepagents \
 
 未安装 Deep Agents 时应清晰提示，不影响旧 CLI 和 LangGraph CLI。
 
-## 8. Promoter Design scaffold CLI
+## 9. Promoter Design scaffold CLI
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.cli.promoter_design \
@@ -138,7 +201,7 @@ PYTHONPATH=src python3 -m breeding_agent.cli.promoter_design \
 
 检查报告是否明确说明：当前不是 promoter generator，不生成真实启动子序列。
 
-## 9. Gradio 启动
+## 10. Gradio 启动
 
 ```bash
 PYTHONPATH=src python3 -m breeding_agent.web.gradio_app
@@ -151,7 +214,7 @@ GRADIO_SERVER_NAME=0.0.0.0 GRADIO_SERVER_PORT=7860 \
 PYTHONPATH=src gradio src/breeding_agent/web/gradio_app.py
 ```
 
-## 10. 提交信息建议
+## 11. 提交信息建议
 
 格式：
 

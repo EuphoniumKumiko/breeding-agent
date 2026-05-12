@@ -1,6 +1,8 @@
 # Lobster-style External Omics Agent Benchmark
 
-适用读者：需要向老师说明“外部多组学 Agent 框架如何与本项目对照”的同学，以及后续准备接入真实 Lobster adapter 的开发者。  
+> Deprecated: 这份对照基准说明只是阶段性参考材料。当前项目并不声称外部 Lobster 风格 benchmark 已真实运行；若要讲清边界，请优先看 `docs/architecture_overview.md`、`docs/report/ppt_outline.md` 和 `docs/developer/current_project_boundary_for_meeting.md`。
+
+适用读者：需要向老师说明“外部多组学 Agent 框架如何与本项目对照”的同学，以及后续准备接入外部 Lobster 风格 adapter 的开发者。  
 阅读目标：明确当前 benchmark 的定位、输入输出、比较维度和能力边界。
 
 ## 1. 为什么选择 Lobster AI
@@ -188,9 +190,9 @@ Refresh 按钮只读取已有输出，不重新运行 benchmark。页面说明�
 
 后续规划可以分三步：
 
-1. **真实 Lobster adapter 调研**：确认 Lobster 安装方式、输入 schema、输出结构和本地模型支持方式。
+1. **外部 adapter 调研**：确认 Lobster 安装方式、输入 schema、输出结构和本地模型支持方式。
 2. **只读 adapter**：把本项目 evidence 转成 Lobster 可读输入，真实运行后只读取 Lobster 输出，不让它修改内部结果。
-3. **正式对照评测**：将真实 Lobster 输出与内部 LangGraph 输出纳入同一 comparison matrix。
+3. **正式对照评测**：将外部 benchmark 输出与内部 LangGraph 输出纳入同一 comparison matrix。
 
 升级时仍需遵守：
 

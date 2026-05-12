@@ -28,6 +28,7 @@ from breeding_agent.workflows.flavonoid_marker_langgraph import (
 
 
 EVIDENCE_DIR = Path("outputs/flavonoid_marker_from_package/evidence")
+LITERATURE_RESULTS = Path("tests/fixtures/literature_results_v2.jsonl")
 
 
 class LangGraphFlavonoidWorkflowTest(unittest.TestCase):
@@ -104,6 +105,42 @@ class LangGraphFlavonoidWorkflowTest(unittest.TestCase):
             self.assertIn("final_qa_agent_node", node_names)
             self.assertIs(state["qa_result"]["passed"], True)
 
+    def test_manual_nodes_accept_external_literature_results(self):
+        self.assertTrue(EVIDENCE_DIR.exists(), f"Missing evidence dir: {EVIDENCE_DIR}")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state = initial_graph_state(
+                evidence_dir=EVIDENCE_DIR,
+                outdir=Path(tmpdir) / "flavonoid_marker_langgraph",
+                variant_calling_dir=_existing_variant_dir(),
+                literature_results_path=LITERATURE_RESULTS,
+            )
+            for node in [
+                load_evidence_node,
+                aggregate_candidates_node,
+                build_agent_context_node,
+                literature_agent_node,
+                marker_recommendation_agent_node,
+                validation_agent_node,
+                reviewer_agent_node,
+                final_qa_agent_node,
+                report_node,
+                write_outputs_node,
+            ]:
+                state = node(state)
+
+            self.assertEqual(state["literature_analysis"]["literature_result_count"], 2)
+            self.assertEqual(state["literature_analysis"]["demo_result_count"], 1)
+            self.assertTrue(state["qa_result"]["no_llm_generated_doi"])
+            self.assertIn("文献查询与分析", state["report_text"])
+            self.assertIn("PubMedFixture", state["report_text"])
+            query_plan_jsonl = Path(state["literature_query_plan_jsonl_path"])
+            query_plan_tsv = Path(state["literature_query_plan_tsv_path"])
+            self.assertTrue(query_plan_jsonl.exists())
+            self.assertTrue(query_plan_tsv.exists())
+            query_plan_text = query_plan_jsonl.read_text(encoding="utf-8")
+            self.assertIn("Si9g04210.1", query_plan_text)
+            self.assertIn("KASP marker", query_plan_text)
+
     def test_langgraph_missing_error_is_friendly_or_graph_builds(self):
         try:
             graph = build_flavonoid_marker_graph()
@@ -123,6 +160,7 @@ class LangGraphFlavonoidWorkflowTest(unittest.TestCase):
             variant_dir = _existing_variant_dir()
             if variant_dir is not None:
                 args.extend(["--variant-calling-dir", str(variant_dir)])
+            args.extend(["--literature-results", str(LITERATURE_RESULTS)])
             exit_code = graph_cli_main(
                 args
             )
@@ -155,6 +193,8 @@ class LangGraphFlavonoidWorkflowTest(unittest.TestCase):
                 "report",
                 "qa_check",
                 "manifest",
+                "literature_query_plan_jsonl",
+                "literature_query_plan_tsv",
             ]
             for key in required_keys:
                 self.assertIn(key, outputs)

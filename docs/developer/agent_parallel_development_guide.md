@@ -116,7 +116,7 @@ LLM node 还应记录：
 - 当前不安装 Lobster、不导入 Lobster、不真实运行 Lobster。
 - 输出中必须保留 `backend_name=lobster_ai_reference`、`backend_mode=mock_reference`、`real_lobster_run=false`。
 
-后续接入真实 Lobster adapter 时建议：
+后续接入外部 Lobster 风格 adapter 时建议：
 
 1. 单独开分支，不和内部 Agent 改动混在一起。
 2. 先实现只读 adapter，把本项目 evidence 转成 Lobster 输入。
